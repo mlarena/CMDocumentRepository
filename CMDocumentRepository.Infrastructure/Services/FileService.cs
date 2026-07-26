@@ -1,5 +1,7 @@
 using CMDocumentRepository.Domain.Interfaces;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace CMDocumentRepository.Infrastructure.Services;
 
@@ -10,9 +12,12 @@ public class FileService : IFileService
     private readonly string[] _allowedExtensions;
     private readonly string[] _blockedExtensions;
 
-    public FileService(IConfiguration configuration)
+    public FileService(IConfiguration configuration, IWebHostEnvironment environment)
     {
-        _uploadPath = configuration["FileStorage:UploadPath"] ?? "uploads";
+        var configuredPath = configuration["FileStorage:UploadPath"] ?? "uploads";
+        _uploadPath = Path.IsPathRooted(configuredPath)
+            ? configuredPath
+            : Path.Combine(environment.ContentRootPath, configuredPath);
         _maxFileSize = long.Parse(configuration["FileStorage:MaxFileSizeMB"] ?? "50") * 1024 * 1024;
         _allowedExtensions = configuration.GetSection("FileStorage:AllowedExtensions").Get<string[]>()
             ?? new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".jpg", ".png" };

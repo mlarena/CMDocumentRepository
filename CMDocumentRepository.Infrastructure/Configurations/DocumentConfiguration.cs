@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CMDocumentRepository.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -41,6 +42,7 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .HasForeignKey(d => d.CreatedBy)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.Ignore(d => d.Metadata);
+        builder.Property(d => d.Metadata)
+            .HasColumnType("jsonb");
     }
 }

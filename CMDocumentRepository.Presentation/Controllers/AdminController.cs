@@ -114,8 +114,17 @@ public class AdminController : Controller
         return RedirectToAction(nameof(Categories));
     }
 
-    public async Task<IActionResult> AuditLogs()
+    public async Task<IActionResult> AuditLogs(Guid? userId = null, string? entityType = null)
     {
-        return View();
+        var query = new GetAuditLogsQuery
+        {
+            UserId = userId,
+            EntityType = entityType,
+            PageSize = 200
+        };
+        var logs = await _mediator.Send(query);
+        ViewBag.CurrentUserId = userId;
+        ViewBag.CurrentEntityType = entityType;
+        return View(logs);
     }
 }

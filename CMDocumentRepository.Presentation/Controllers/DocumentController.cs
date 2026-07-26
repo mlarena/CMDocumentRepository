@@ -2,6 +2,7 @@ using CMDocumentRepository.Application.Commands;
 using CMDocumentRepository.Application.DTOs;
 using CMDocumentRepository.Application.Queries;
 using CMDocumentRepository.Domain.Enums;
+using CMDocumentRepository.Domain.Interfaces;
 using CMDocumentRepository.Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -15,11 +16,13 @@ public class DocumentController : Controller
 {
     private readonly IMediator _mediator;
     private readonly IExportService _exportService;
+    private readonly IFileService _fileService;
 
-    public DocumentController(IMediator mediator, IExportService exportService)
+    public DocumentController(IMediator mediator, IExportService exportService, IFileService fileService)
     {
         _mediator = mediator;
         _exportService = exportService;
+        _fileService = fileService;
     }
 
     public async Task<IActionResult> Index(int page = 1, int pageSize = 10, DocumentStatus? status = null, Guid? categoryId = null, Guid? documentTypeId = null, string? keyword = null)
@@ -211,6 +214,33 @@ public class DocumentController : Controller
     {
         await _mediator.Send(new RestoreDocumentCommand { Id = id });
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Download(Guid id)
+    {
+        var document = await _mediator.Send(new GetDocumentByIdQuery { Id = id });
+        if (document == null || string.IsNullOrEmpty(document.FilePath))
+            return NotFound();
+
+        var stream = await _fileService.GetFileStreamAsync(document.FilePath);
+        var fileName = Path.GetFileName(document.FilePath);
+
+        return File(stream, "application/octet-stream", fileName);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadVersion(Guid documentId, decimal versionNumber)
+    {
+        var versions = await _mediator.Send(new GetDocumentVersionsQuery { DocumentId = documentId });
+        var version = versions.FirstOrDefault(v => v.VersionNumber == versionNumber);
+        if (version == null || string.IsNullOrEmpty(version.FilePath))
+            return NotFound();
+
+        var stream = await _fileService.GetFileStreamAsync(version.FilePath);
+        var fileName = Path.GetFileName(version.FilePath);
+
+        return File(stream, "application/octet-stream", fileName);
     }
 
     public async Task<IActionResult> Export(DocumentStatus? status, Guid? categoryId, Guid? documentTypeId, string? keyword)

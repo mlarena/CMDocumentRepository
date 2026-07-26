@@ -108,6 +108,9 @@
                         <dt class="col-sm-3">Файл:</dt>
                         <dd class="col-sm-9">
                             <i class="bi bi-file-earmark"></i> @Model.FileExtension.ToUpper() (@(Model.FileSize / 1024) КБ)
+                            <a asp-action="Download" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="bi bi-download"></i> Скачать
+                            </a>
                         </dd>
                     }
                 </dl>
@@ -131,6 +134,7 @@
                                         <th>Версия</th>
                                         <th>Дата</th>
                                         <th>Комментарий</th>
+                                        <th>Файл</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -140,6 +144,11 @@
                                             <td>@v.VersionNumber.ToString("F1")</td>
                                             <td>@v.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
                                             <td>@(v.ChangeComment ?? "—")</td>
+                                            <td>
+                                                <a asp-action="DownloadVersion" asp-route-documentId="@Model.Id" asp-route-versionNumber="@v.VersionNumber" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>

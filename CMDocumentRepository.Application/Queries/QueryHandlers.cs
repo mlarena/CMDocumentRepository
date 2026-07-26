@@ -847,3 +847,57 @@ public class GetMyPermissionsQueryHandler : IRequestHandler<GetMyPermissionsQuer
         }).ToList();
     }
 }
+
+public class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery, List<AuditLogDto>>
+{
+    private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IUserRepository _userRepository;
+
+    public GetAuditLogsQueryHandler(IAuditLogRepository auditLogRepository, IUserRepository userRepository)
+    {
+        _auditLogRepository = auditLogRepository;
+        _userRepository = userRepository;
+    }
+
+    public async Task<List<AuditLogDto>> Handle(GetAuditLogsQuery request, CancellationToken cancellationToken)
+    {
+        IEnumerable<Domain.Entities.AuditLog> logs;
+
+        if (request.UserId.HasValue)
+        {
+            logs = await _auditLogRepository.GetByUserIdAsync(request.UserId.Value);
+        }
+        else if (!string.IsNullOrEmpty(request.EntityType))
+        {
+            logs = await _auditLogRepository.GetByEntityTypeAsync(request.EntityType);
+        }
+        else if (request.FromDate.HasValue || request.ToDate.HasValue)
+        {
+            logs = await _auditLogRepository.GetByDateRangeAsync(
+                request.FromDate ?? DateTime.MinValue,
+                request.ToDate ?? DateTime.MaxValue);
+        }
+        else
+        {
+            logs = await _auditLogRepository.GetAllAsync();
+        }
+
+        var result = new List<AuditLogDto>();
+        foreach (var log in logs.OrderByDescending(l => l.CreatedAt).Take(request.PageSize))
+        {
+            var user = await _userRepository.GetByIdAsync(log.UserId);
+            result.Add(new AuditLogDto
+            {
+                Id = log.Id,
+                UserId = log.UserId,
+                UserName = user?.UserName ?? "—",
+                Action = log.Action,
+                EntityType = log.EntityType,
+                EntityId = log.EntityId,
+                CreatedAt = log.CreatedAt
+            });
+        }
+
+        return result;
+    }
+}
