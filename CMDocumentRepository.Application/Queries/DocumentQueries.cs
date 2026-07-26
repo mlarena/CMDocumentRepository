@@ -51,3 +51,5 @@ public record GetDeletedDocumentsQuery : IRequest<List<DocumentDto>>
 {
     public Guid? UserId { get; init; }
 }
+
+public record GetGanttDataQuery : IRequest<GanttDataDto>;

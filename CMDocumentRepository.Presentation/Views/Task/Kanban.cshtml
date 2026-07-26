@@ -1,7 +1,10 @@
 @model List<CMDocumentRepository.Application.DTOs.TaskDto>
-
-@{
+@using System.Text.Json;
+@using Microsoft.AspNetCore.Antiforgery;
+@inject IAntiforgery Antiforgery
+@{ 
     ViewData["Title"] = "Kanban-доска";
+    var token = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -11,146 +14,101 @@
     </a>
 </div>
 
+@functions {
+    string PriorityLabel(CMDocumentRepository.Domain.Enums.TaskPriority p) => p switch
+    {
+        CMDocumentRepository.Domain.Enums.TaskPriority.Low => "Н",
+        CMDocumentRepository.Domain.Enums.TaskPriority.Medium => "С",
+        CMDocumentRepository.Domain.Enums.TaskPriority.High => "В",
+        CMDocumentRepository.Domain.Enums.TaskPriority.Critical => "К",
+        _ => "?"
+    };
+    string PriorityClass(CMDocumentRepository.Domain.Enums.TaskPriority p) => p switch
+    {
+        CMDocumentRepository.Domain.Enums.TaskPriority.Low => "bg-secondary",
+        CMDocumentRepository.Domain.Enums.TaskPriority.Medium => "bg-warning text-dark",
+        CMDocumentRepository.Domain.Enums.TaskPriority.High => "bg-info",
+        CMDocumentRepository.Domain.Enums.TaskPriority.Critical => "bg-danger",
+        _ => "bg-secondary"
+    };
+    void RenderColumn(IEnumerable<CMDocumentRepository.Application.DTOs.TaskDto> tasks, CMDocumentRepository.Domain.Enums.AppTaskStatus status, string title, string badgeClass)
+    {
+        <div class="col-md-3">
+            <div class="card border-light">
+                <div class="card-header" style="font-weight:600;">@title</div>
+                <div class="card-body kanban-column" data-status="@status" style="min-height: 400px;">
+                    @foreach (var task in tasks)
+                    {
+                        <div class="card mb-2 kanban-card" draggable="true" data-task-id="@task.Id">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong class="small d-flex align-items-center">
+                                        <span class="badge @PriorityClass(task.Priority) me-1" style="font-size:0.7rem;">@PriorityLabel(task.Priority)</span>
+                                        @task.Title
+                                    </strong>
+                                </div>
+                                @if (task.DueDate.HasValue)
+                                {
+                                    <div class="text-muted small" style="margin-top:6px; font-size:0.78rem;">
+                                        <i class="bi bi-calendar"></i>&nbsp;<span>@task.DueDate.Value.ToString("dd.MM.yyyy")</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
 <div class="row">
-    <div class="col-md-3">
-        <div class="card bg-light">
-            <div class="card-header">
-                <h6 class="mb-0">Backlog</h6>
-            </div>
-            <div class="card-body kanban-column" data-status="Backlog" style="min-height: 400px;">
-                @foreach (var task in Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.Backlog))
-                {
-                    <div class="card mb-2 kanban-card" draggable="true" data-task-id="@task.Id">
-                        <div class="card-body p-2">
-                            <div class="d-flex justify-content-between">
-                                <strong class="small">@task.Title</strong>
-                                <span class="badge bg-secondary">@task.Priority</span>
-                            </div>
-                            @if (task.DueDate.HasValue)
-                            {
-                                <small class="text-muted"><i class="bi bi-calendar"></i> @task.DueDate.Value.ToString("dd.MM")</small>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card bg-light">
-            <div class="card-header">
-                <h6 class="mb-0">In Progress</h6>
-            </div>
-            <div class="card-body kanban-column" data-status="InProgress" style="min-height: 400px;">
-                @foreach (var task in Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.InProgress))
-                {
-                    <div class="card mb-2 kanban-card" draggable="true" data-task-id="@task.Id">
-                        <div class="card-body p-2">
-                            <div class="d-flex justify-content-between">
-                                <strong class="small">@task.Title</strong>
-                                <span class="badge bg-warning text-dark">@task.Priority</span>
-                            </div>
-                            @if (task.DueDate.HasValue)
-                            {
-                                <small class="text-muted"><i class="bi bi-calendar"></i> @task.DueDate.Value.ToString("dd.MM")</small>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card bg-light">
-            <div class="card-header">
-                <h6 class="mb-0">Review</h6>
-            </div>
-            <div class="card-body kanban-column" data-status="Review" style="min-height: 400px;">
-                @foreach (var task in Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.Review))
-                {
-                    <div class="card mb-2 kanban-card" draggable="true" data-task-id="@task.Id">
-                        <div class="card-body p-2">
-                            <div class="d-flex justify-content-between">
-                                <strong class="small">@task.Title</strong>
-                                <span class="badge bg-info">@task.Priority</span>
-                            </div>
-                            @if (task.DueDate.HasValue)
-                            {
-                                <small class="text-muted"><i class="bi bi-calendar"></i> @task.DueDate.Value.ToString("dd.MM")</small>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card bg-light">
-            <div class="card-header">
-                <h6 class="mb-0">Done</h6>
-            </div>
-            <div class="card-body kanban-column" data-status="Done" style="min-height: 400px;">
-                @foreach (var task in Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.Done))
-                {
-                    <div class="card mb-2 kanban-card" draggable="true" data-task-id="@task.Id">
-                        <div class="card-body p-2">
-                            <div class="d-flex justify-content-between">
-                                <strong class="small">@task.Title</strong>
-                                <span class="badge bg-success">@task.Priority</span>
-                            </div>
-                            @if (task.DueDate.HasValue)
-                            {
-                                <small class="text-muted"><i class="bi bi-calendar"></i> @task.DueDate.Value.ToString("dd.MM")</small>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
+    @{ RenderColumn(Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.Backlog).OrderBy(t => t.DueDate), CMDocumentRepository.Domain.Enums.AppTaskStatus.Backlog, "Очередь", "bg-secondary"); }
+    @{ RenderColumn(Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.InProgress).OrderBy(t => t.DueDate), CMDocumentRepository.Domain.Enums.AppTaskStatus.InProgress, "В работе", "bg-warning text-dark"); }
+    @{ RenderColumn(Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.Review).OrderBy(t => t.DueDate), CMDocumentRepository.Domain.Enums.AppTaskStatus.Review, "На ревью", "bg-info"); }
+    @{ RenderColumn(Model.Where(t => t.Status == CMDocumentRepository.Domain.Enums.AppTaskStatus.Done).OrderBy(t => t.DueDate), CMDocumentRepository.Domain.Enums.AppTaskStatus.Done, "Готово", "bg-success"); }
 </div>
 
 @section Scripts {
     <script>
-        document.querySelectorAll('.kanban-card').forEach(card => {
-            card.addEventListener('dragstart', function(e) {
-                e.dataTransfer.setData('text/plain', this.dataset.taskId);
-                this.classList.add('opacity-50');
-            });
-            card.addEventListener('dragend', function() {
-                this.classList.remove('opacity-50');
-            });
-        });
+        const antiforgeryHeader = "RequestVerificationToken";
+        const antiforgeryValue = "@token";
 
-        document.querySelectorAll('.kanban-column').forEach(column => {
-            column.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                this.classList.add('border-primary');
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll(".kanban-card").forEach(card => {
+                card.addEventListener("dragstart", function (e) {
+                    e.dataTransfer.setData("text/plain", this.dataset.taskId);
+                    this.classList.add("opacity-50");
+                });
+                card.addEventListener("dragend", function () {
+                    this.classList.remove("opacity-50");
+                });
             });
-            column.addEventListener('dragleave', function() {
-                this.classList.remove('border-primary');
-            });
-            column.addEventListener('drop', function(e) {
-                e.preventDefault();
-                this.classList.remove('border-primary');
-                const taskId = e.dataTransfer.getData('text/plain');
-                const newStatus = this.dataset.status;
 
-                fetch('/Task/Move', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value
-                    },
-                    body: JSON.stringify({
-                        taskId: taskId,
-                        newOrder: 0,
-                        newStatus: newStatus
-                    })
-                }).then(() => location.reload());
+            document.querySelectorAll(".kanban-column").forEach(column => {
+                column.addEventListener("dragover", function (e) {
+                    e.preventDefault();
+                    this.classList.add("border-primary");
+                });
+                column.addEventListener("dragleave", function () {
+                    this.classList.remove("border-primary");
+                });
+                column.addEventListener("drop", function (e) {
+                    e.preventDefault();
+                    this.classList.remove("border-primary");
+                    const cardToMove = e.target.closest(".kanban-card");
+                    if (cardToMove) {
+                        this.insertBefore(cardToMove, null);
+                    }
+                    const taskId = e.dataTransfer.getData("text/plain");
+                    const newStatus = this.dataset.status;
+
+                    fetch("/Task/Move", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", [antiforgeryHeader]: antiforgeryValue },
+                        body: JSON.stringify({ taskId: taskId, newOrder: 0, newStatus: newStatus }),
+                    }).catch(() => location.reload());
+                });
             });
         });
     </script>

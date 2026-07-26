@@ -224,9 +224,12 @@ public class DocumentController : Controller
             return NotFound();
 
         var stream = await _fileService.GetFileStreamAsync(document.FilePath);
-        var fileName = Path.GetFileName(document.FilePath);
+        var storedFileName = Path.GetFileName(document.FilePath);
+        // Убираем префикс GUID_, чтобы вернуть оригинальное имя файла
+        var underscoreIdx = storedFileName.IndexOf('_');
+        var downloadName = underscoreIdx >= 0 ? storedFileName[(underscoreIdx + 1)..] : storedFileName;
 
-        return File(stream, "application/octet-stream", fileName);
+        return File(stream, "application/octet-stream", downloadName);
     }
 
     [HttpGet]
@@ -238,9 +241,14 @@ public class DocumentController : Controller
             return NotFound();
 
         var stream = await _fileService.GetFileStreamAsync(version.FilePath);
-        var fileName = Path.GetFileName(version.FilePath);
+        var storedFileName = Path.GetFileName(version.FilePath);
+        // Убираем префикс vX_Y_ из имени файловой версии
+        var underscoreIdx = storedFileName.IndexOf('_');
+        var downloadName = underscoreIdx >= 0 ? storedFileName[(underscoreIdx + 1)..] : storedFileName;
+        underscoreIdx = downloadName.IndexOf('_');
+        if (underscoreIdx >= 0) downloadName = downloadName[(underscoreIdx + 1)..];
 
-        return File(stream, "application/octet-stream", fileName);
+        return File(stream, "application/octet-stream", downloadName);
     }
 
     public async Task<IActionResult> Export(DocumentStatus? status, Guid? categoryId, Guid? documentTypeId, string? keyword)

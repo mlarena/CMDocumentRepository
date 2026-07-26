@@ -58,4 +58,14 @@ function getSelectedIds() {
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
     initTheme();
+    // Автоскрытие ошибок из query string
+    var errContainer = document.getElementById('error-toast-container');
+    if (errContainer) {
+        // Удалить параметр error из URL без перезагрузки
+        var url = new URL(window.location);
+        url.searchParams.delete('error');
+        window.history.replaceState({}, '', url);
+        // Автоскрытие через 5 секунд
+        setTimeout(function() { errContainer.remove(); }, 5000);
+    }
 });

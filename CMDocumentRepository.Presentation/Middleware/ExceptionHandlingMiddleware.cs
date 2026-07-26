@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json;
 
 namespace CMDocumentRepository.Presentation.Middleware;
 
@@ -35,18 +34,16 @@ public class ExceptionHandlingMiddleware
             UnauthorizedAccessException ex => (HttpStatusCode.Unauthorized, ex.Message),
             InvalidOperationException ex => (HttpStatusCode.BadRequest, ex.Message),
             FluentValidation.ValidationException ex =>
-                (HttpStatusCode.BadRequest, string.Join(", ", ex.Errors.Select(e => e.ErrorMessage))),
+                (HttpStatusCode.BadRequest, string.Join("\n", ex.Errors.Select(e => e.ErrorMessage))),
             _ => (HttpStatusCode.InternalServerError, "Внутренняя ошибка сервера")
         };
 
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)statusCode;
+        var returnUrl = context.Request.Headers["Referer"].ToString();
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            returnUrl = "/";
 
-        var response = JsonSerializer.Serialize(new { error = message }, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-
-        await context.Response.WriteAsync(response);
+        var sep = returnUrl.Contains('?') ? "&" : "?";
+        var redirectUrl = $"{returnUrl}{sep}error={Uri.EscapeDataString(message)}";
+        context.Response.Redirect(redirectUrl);
     }
 }

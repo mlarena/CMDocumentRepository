@@ -137,6 +137,16 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     }
+                    @if (Context.Request.Query.ContainsKey("error"))
+                    {
+                        <div id="error-toast-container" class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @foreach (var msg in Context.Request.Query["error"]!)
+                            {
+                                <div>@msg</div>
+                            }
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
                     @RenderBody()
                 </div>
             </div>

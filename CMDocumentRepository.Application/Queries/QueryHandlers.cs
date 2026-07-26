@@ -377,22 +377,36 @@ public class GetMyDocumentsQueryHandler : IRequestHandler<GetMyDocumentsQuery, L
     {
         var docs = await _documentRepository.GetByCreatorAsync(request.UserId);
 
-        return docs.Select(doc => new DocumentDto
+        var result = new List<DocumentDto>();
+        foreach (var doc in docs)
         {
-            Id = doc.Id,
-            DocumentNumber = doc.DocumentNumber,
-            Title = doc.Title,
-            Description = doc.Description,
-            CategoryId = doc.CategoryId,
-            DocumentTypeId = doc.DocumentTypeId,
-            Version = doc.Version,
-            Status = doc.Status,
-            CreatedBy = doc.CreatedBy,
-            CreatedAt = doc.CreatedAt,
-            ValidFrom = doc.ValidFrom,
-            ValidUntil = doc.ValidUntil,
-            FileExtension = doc.FileExtension
-        }).ToList();
+            var cat = await _categoryRepository.GetByIdAsync(doc.CategoryId);
+            var typ = await _typeRepository.GetByIdAsync(doc.DocumentTypeId);
+            var creator = await _userRepository.GetByIdAsync(doc.CreatedBy);
+
+            result.Add(new DocumentDto
+            {
+                Id = doc.Id,
+                DocumentNumber = doc.DocumentNumber,
+                Title = doc.Title,
+                Description = doc.Description,
+                CategoryId = doc.CategoryId,
+                CategoryName = cat?.Name ?? "—",
+                DocumentTypeId = doc.DocumentTypeId,
+                DocumentTypeName = typ?.Name ?? "—",
+                Version = doc.Version,
+                Status = doc.Status,
+                CreatedBy = doc.CreatedBy,
+                CreatorName = creator != null ? $"{creator.LastName} {creator.FirstName}" : "—",
+                CreatedAt = doc.CreatedAt,
+                ValidFrom = doc.ValidFrom,
+                ValidUntil = doc.ValidUntil,
+                FilePath = doc.FilePath,
+                FileSize = doc.FileSize,
+                FileExtension = doc.FileExtension
+            });
+        }
+        return result;
     }
 }
 
