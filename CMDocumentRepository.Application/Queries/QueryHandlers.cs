@@ -209,18 +209,18 @@ public class GetAllDocumentsQueryHandler : IRequestHandler<GetAllDocumentsQuery,
 
 public class SearchDocumentsQueryHandler : IRequestHandler<SearchDocumentsQuery, List<DocumentDto>>
 {
-    private readonly IDocumentRepository _documentRepository;
+    private readonly ISearchService _searchService;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IDocumentTypeRepository _typeRepository;
     private readonly IUserRepository _userRepository;
 
     public SearchDocumentsQueryHandler(
-        IDocumentRepository documentRepository,
+        ISearchService searchService,
         ICategoryRepository categoryRepository,
         IDocumentTypeRepository typeRepository,
         IUserRepository userRepository)
     {
-        _documentRepository = documentRepository;
+        _searchService = searchService;
         _categoryRepository = categoryRepository;
         _typeRepository = typeRepository;
         _userRepository = userRepository;
@@ -228,8 +228,11 @@ public class SearchDocumentsQueryHandler : IRequestHandler<SearchDocumentsQuery,
 
     public async Task<List<DocumentDto>> Handle(SearchDocumentsQuery request, CancellationToken cancellationToken)
     {
-        var docs = await _documentRepository.SearchAsync(
-            request.Keyword ?? string.Empty,
+        if (string.IsNullOrWhiteSpace(request.Keyword))
+            return new List<DocumentDto>();
+
+        var docs = await _searchService.FullTextSearchAsync(
+            request.Keyword,
             request.Status,
             request.CategoryId,
             request.DocumentTypeId,

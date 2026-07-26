@@ -22,29 +22,57 @@ public class GetPagedDocumentsQueryHandler : IRequestHandler<GetPagedDocumentsQu
     private readonly ICategoryRepository _categoryRepository;
     private readonly IDocumentTypeRepository _typeRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ISearchService? _searchService;
 
     public GetPagedDocumentsQueryHandler(
         IDocumentRepository documentRepository,
         ICategoryRepository categoryRepository,
         IDocumentTypeRepository typeRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        ISearchService? searchService = null)
     {
         _documentRepository = documentRepository;
         _categoryRepository = categoryRepository;
         _typeRepository = typeRepository;
         _userRepository = userRepository;
+        _searchService = searchService;
     }
 
     public async Task<PagedResult<DocumentDto>> Handle(GetPagedDocumentsQuery request, CancellationToken cancellationToken)
     {
-        var (items, totalCount) = await _documentRepository.GetPagedAsync(
-            request.PageNumber,
-            request.PageSize,
-            request.Keyword,
-            request.Status,
-            request.CategoryId,
-            request.DocumentTypeId,
-            request.CreatedBy);
+        List<Domain.Entities.Document> items;
+        int totalCount;
+
+        // Если есть ключевое слово — используем FTS
+        if (!string.IsNullOrWhiteSpace(request.Keyword) && _searchService != null)
+        {
+            var ftsResults = await _searchService.FullTextSearchAsync(
+                request.Keyword,
+                request.Status,
+                request.CategoryId,
+                request.DocumentTypeId,
+                limit: 1000);
+
+            totalCount = ftsResults.Count();
+            items = ftsResults
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+        }
+        else
+        {
+            var result = await _documentRepository.GetPagedAsync(
+                request.PageNumber,
+                request.PageSize,
+                request.Keyword,
+                request.Status,
+                request.CategoryId,
+                request.DocumentTypeId,
+                request.CreatedBy);
+
+            items = result.Items;
+            totalCount = result.TotalCount;
+        }
 
         var dtos = new List<DocumentDto>();
         foreach (var doc in items)

@@ -44,6 +44,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<INumberingService, NumberingService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IExportService, ExportService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 
 builder.Services.AddApplication();
 
