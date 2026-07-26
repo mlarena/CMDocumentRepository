@@ -1,4 +1,4 @@
-@model List<CMDocumentRepository.Application.DTOs.DocumentDto>
+@model CMDocumentRepository.Application.DTOs.PagedResult<DocumentDto>
 
 @{
     ViewData["Title"] = "Документы";
@@ -6,12 +6,80 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4>Документы</h4>
-    <a asp-action="Create" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Создать документ
-    </a>
+    <div>
+        <a asp-action="Export" asp-route-keyword="@ViewBag.CurrentKeyword" asp-route-status="@ViewBag.CurrentStatus"
+           asp-route-categoryId="@ViewBag.CurrentCategoryId" asp-route-documentTypeId="@ViewBag.CurrentDocumentTypeId"
+           class="btn btn-outline-success me-2">
+            <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+        </a>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Создать документ
+        </a>
+    </div>
 </div>
 
-@if (Model.Any())
+<!-- Фильтры -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="row g-3">
+            <div class="col-md-3">
+                <input type="text" name="keyword" value="@ViewBag.CurrentKeyword" class="form-control" placeholder="Поиск по названию, номеру..." />
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select">
+                    <option value="">Все статусы</option>
+                    <option value="Draft" selected="@(ViewBag.CurrentStatus?.ToString() == "Draft")">Черновик</option>
+                    <option value="PendingApproval" selected="@(ViewBag.CurrentStatus?.ToString() == "PendingApproval")">На согласовании</option>
+                    <option value="Approved" selected="@(ViewBag.CurrentStatus?.ToString() == "Approved")">Согласован</option>
+                    <option value="Rejected" selected="@(ViewBag.CurrentStatus?.ToString() == "Rejected")">Отклонён</option>
+                    <option value="Active" selected="@(ViewBag.CurrentStatus?.ToString() == "Active")">Действует</option>
+                    <option value="Archived" selected="@(ViewBag.CurrentStatus?.ToString() == "Archived")">Архив</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="categoryId" class="form-select">
+                    <option value="">Все категории</option>
+                    @if (ViewBag.Categories != null)
+                    {
+                        foreach (var cat in (List<CategoryDto>)ViewBag.Categories)
+                        {
+                            <option value="@cat.Id" selected="@(ViewBag.CurrentCategoryId?.ToString() == cat.Id.ToString())">@cat.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="documentTypeId" class="form-select">
+                    <option value="">Все типы</option>
+                    @if (ViewBag.DocumentTypes != null)
+                    {
+                        foreach (var type in (List<DocumentTypeDto>)ViewBag.DocumentTypes)
+                        {
+                            <option value="@type.Id" selected="@(ViewBag.CurrentDocumentTypeId?.ToString() == type.Id.ToString())">@type.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="pageSize" class="form-select">
+                    <option value="5">5 на странице</option>
+                    <option value="10" selected="@(Model.PageSize == 10)">10 на странице</option>
+                    <option value="25" selected="@(Model.PageSize == 25)">25 на странице</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50 на странице</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<p class="text-muted">Найдено документов: @Model.TotalCount</p>
+
+@if (Model.Items.Any())
 {
     <div class="table-responsive">
         <table class="table table-hover">
@@ -23,12 +91,12 @@
                     <th>Категория</th>
                     <th>Версия</th>
                     <th>Статус</th>
-                    <th>Дата создания</th>
+                    <th>Дата</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var doc in Model)
+                @foreach (var doc in Model.Items)
                 {
                     <tr>
                         <td><code>@doc.DocumentNumber</code></td>
@@ -39,25 +107,25 @@
                         <td>
                             @switch (doc.Status)
                             {
-                                case CMDocumentRepository.Domain.Enums.DocumentStatus.Draft:
+                                case DocumentStatus.Draft:
                                     <span class="badge bg-secondary">Черновик</span>
                                     break;
-                                case CMDocumentRepository.Domain.Enums.DocumentStatus.PendingApproval:
+                                case DocumentStatus.PendingApproval:
                                     <span class="badge bg-warning text-dark">На согласовании</span>
                                     break;
-                                case CMDocumentRepository.Domain.Enums.DocumentStatus.Approved:
+                                case DocumentStatus.Approved:
                                     <span class="badge bg-success">Согласован</span>
                                     break;
-                                case CMDocumentRepository.Domain.Enums.DocumentStatus.Rejected:
+                                case DocumentStatus.Rejected:
                                     <span class="badge bg-danger">Отклонён</span>
                                     break;
-                                case CMDocumentRepository.Domain.Enums.DocumentStatus.Rework:
+                                case DocumentStatus.Rework:
                                     <span class="badge bg-info">На доработке</span>
                                     break;
-                                case CMDocumentRepository.Domain.Enums.DocumentStatus.Active:
+                                case DocumentStatus.Active:
                                     <span class="badge bg-primary">Действует</span>
                                     break;
-                                case CMDocumentRepository.Domain.Enums.DocumentStatus.Archived:
+                                case DocumentStatus.Archived:
                                     <span class="badge bg-dark">Архив</span>
                                     break;
                             }
@@ -73,6 +141,41 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Пагинация -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.HasPrevious ? "" : "disabled")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(Model.PageNumber - 1)" asp-route-pageSize="@Model.PageSize"
+                       asp-route-keyword="@ViewBag.CurrentKeyword" asp-route-status="@ViewBag.CurrentStatus"
+                       asp-route-categoryId="@ViewBag.CurrentCategoryId" asp-route-documentTypeId="@ViewBag.CurrentDocumentTypeId">
+                        &laquo;
+                    </a>
+                </li>
+
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-pageSize="@Model.PageSize"
+                           asp-route-keyword="@ViewBag.CurrentKeyword" asp-route-status="@ViewBag.CurrentStatus"
+                           asp-route-categoryId="@ViewBag.CurrentCategoryId" asp-route-documentTypeId="@ViewBag.CurrentDocumentTypeId">
+                            @i
+                        </a>
+                    </li>
+                }
+
+                <li class="page-item @(Model.HasNext ? "" : "disabled")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(Model.PageNumber + 1)" asp-route-pageSize="@Model.PageSize"
+                       asp-route-keyword="@ViewBag.CurrentKeyword" asp-route-status="@ViewBag.CurrentStatus"
+                       asp-route-categoryId="@ViewBag.CurrentCategoryId" asp-route-documentTypeId="@ViewBag.CurrentDocumentTypeId">
+                        &raquo;
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
 }
 else
 {

@@ -1,0 +1,82 @@
+@model List<CMDocumentRepository.Application.DTOs.DocumentDto>
+
+@{
+    ViewData["Title"] = "Результаты поиска";
+}
+
+<h4>Результаты поиска</h4>
+<hr />
+
+@if (ViewBag.Keyword != null)
+{
+    <p class="text-muted">По запросу: "<strong>@ViewBag.Keyword</strong>" найдено @Model.Count документов</p>
+}
+
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Номер</th>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th>Категория</th>
+                    <th>Статус</th>
+                    <th>Дата</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var doc in Model)
+                {
+                    <tr>
+                        <td><code>@doc.DocumentNumber</code></td>
+                        <td>@doc.Title</td>
+                        <td>@doc.DocumentTypeName</td>
+                        <td>@doc.CategoryName</td>
+                        <td>
+                            @switch (doc.Status)
+                            {
+                                case DocumentStatus.Draft:
+                                    <span class="badge bg-secondary">Черновик</span>
+                                    break;
+                                case DocumentStatus.PendingApproval:
+                                    <span class="badge bg-warning text-dark">На согласовании</span>
+                                    break;
+                                case DocumentStatus.Approved:
+                                    <span class="badge bg-success">Согласован</span>
+                                    break;
+                                case DocumentStatus.Rejected:
+                                    <span class="badge bg-danger">Отклонён</span>
+                                    break;
+                                case DocumentStatus.Active:
+                                    <span class="badge bg-primary">Действует</span>
+                                    break;
+                                case DocumentStatus.Archived:
+                                    <span class="badge bg-dark">Архив</span>
+                                    break;
+                            }
+                        </td>
+                        <td>@doc.CreatedAt.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            <a asp-controller="Document" asp-action="Details" asp-route-id="@doc.Id" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Документы не найдены
+    </div>
+}
+
+<a asp-action="Index" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Новый поиск
+</a>

@@ -17,9 +17,10 @@ public class AdminController : Controller
         _mediator = mediator;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return View();
+        var stats = await _mediator.Send(new GetDashboardStatsQuery());
+        return View(stats);
     }
 
     public async Task<IActionResult> DocumentTypes()

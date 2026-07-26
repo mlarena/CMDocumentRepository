@@ -1,0 +1,101 @@
+@model CMDocumentRepository.Application.DTOs.TaskDto
+
+@{
+    ViewData["Title"] = $"Задача: {Model.Title}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>@Model.Title</h4>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Редактировать
+        </a>
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Удалить задачу?')">
+                <i class="bi bi-trash"></i> Удалить
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Информация о задаче</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Название:</dt>
+                    <dd class="col-sm-9">@Model.Title</dd>
+
+                    <dt class="col-sm-3">Описание:</dt>
+                    <dd class="col-sm-9">@(Model.Description ?? "—")</dd>
+
+                    <dt class="col-sm-3">Приоритет:</dt>
+                    <dd class="col-sm-9">
+                        @switch (Model.Priority)
+                        {
+                            case TaskPriority.Low:
+                                <span class="badge bg-secondary">Низкий</span>
+                                break;
+                            case TaskPriority.Medium:
+                                <span class="badge bg-primary">Средний</span>
+                                break;
+                            case TaskPriority.High:
+                                <span class="badge bg-warning text-dark">Высокий</span>
+                                break;
+                            case TaskPriority.Critical:
+                                <span class="badge bg-danger">Критический</span>
+                                break;
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Статус:</dt>
+                    <dd class="col-sm-9">
+                        @switch (Model.Status)
+                        {
+                            case AppTaskStatus.Backlog:
+                                <span class="badge bg-secondary">Backlog</span>
+                                break;
+                            case AppTaskStatus.InProgress:
+                                <span class="badge bg-primary">В работе</span>
+                                break;
+                            case AppTaskStatus.Review:
+                                <span class="badge bg-info">На проверке</span>
+                                break;
+                            case AppTaskStatus.Done:
+                                <span class="badge bg-success">Готово</span>
+                                break;
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Исполнитель:</dt>
+                    <dd class="col-sm-9">@(Model.AssigneeName ?? "Не назначен")</dd>
+
+                    <dt class="col-sm-3">Создатель:</dt>
+                    <dd class="col-sm-9">@Model.CreatorName</dd>
+
+                    <dt class="col-sm-3">Дата создания:</dt>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToString("dd.MM.yyyy HH:mm")</dd>
+
+                    <dt class="col-sm-3">Дедлайн:</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.DueDate.HasValue)
+                        {
+                            var daysLeft = (Model.DueDate.Value - DateTime.Today).Days;
+                            <span class="@(daysLeft < 0 ? "text-danger" : daysLeft <= 3 ? "text-warning" : "")">
+                                @Model.DueDate.Value.ToString("dd.MM.yyyy")
+                                (@(daysLeft < 0 ? $"просрочено на {Math.Abs(daysLeft)} дн." : $"{daysLeft} дн."))
+                            </span>
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>

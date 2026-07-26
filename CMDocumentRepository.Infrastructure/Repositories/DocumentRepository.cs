@@ -104,4 +104,42 @@ public class DocumentRepository : Repository<Document>, IDocumentRepository
 
         return $"{prefix}-{year}-001";
     }
+
+    public async Task<(List<Document> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber, int pageSize, string? keyword, DocumentStatus? status,
+        Guid? categoryId, Guid? documentTypeId, Guid? createdBy)
+    {
+        var query = _dbSet.Where(d => !d.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            query = query.Where(d =>
+                d.Title.Contains(keyword) ||
+                d.Description!.Contains(keyword) ||
+                d.DocumentNumber.Contains(keyword));
+        }
+
+        if (status.HasValue)
+            query = query.Where(d => d.Status == status.Value);
+
+        if (categoryId.HasValue)
+            query = query.Where(d => d.CategoryId == categoryId.Value);
+
+        if (documentTypeId.HasValue)
+            query = query.Where(d => d.DocumentTypeId == documentTypeId.Value);
+
+        if (createdBy.HasValue)
+            query = query.Where(d => d.CreatedBy == createdBy.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(d => d.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
 }

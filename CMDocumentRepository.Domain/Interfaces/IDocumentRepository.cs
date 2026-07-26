@@ -12,4 +12,5 @@ public interface IDocumentRepository : IRepository<Document>
     Task<IEnumerable<Document>> GetByCreatorAsync(Guid userId);
     Task<IEnumerable<Document>> SearchAsync(string keyword, DocumentStatus? status, Guid? categoryId, Guid? documentTypeId, DateTime? dateFrom, DateTime? dateTo);
     Task<string> GetNextDocumentNumberAsync(string prefix, int year);
+    Task<(List<Document> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize, string? keyword, DocumentStatus? status, Guid? categoryId, Guid? documentTypeId, Guid? createdBy);
 }

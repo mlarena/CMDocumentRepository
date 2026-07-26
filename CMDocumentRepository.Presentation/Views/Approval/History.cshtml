@@ -1,0 +1,59 @@
+@model List<CMDocumentRepository.Application.DTOs.ApprovalDto>
+
+@{
+    ViewData["Title"] = "История согласований";
+}
+
+<h4>История моих согласований</h4>
+<hr />
+
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Номер</th>
+                    <th>Название</th>
+                    <th>Статус</th>
+                    <th>Комментарий</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var approval in Model)
+                {
+                    <tr>
+                        <td><code>@approval.DocumentNumber</code></td>
+                        <td>@approval.DocumentTitle</td>
+                        <td>
+                            @switch (approval.Status)
+                            {
+                                case ApprovalStatus.Pending:
+                                    <span class="badge bg-warning text-dark">Ожидает</span>
+                                    break;
+                                case ApprovalStatus.Approved:
+                                    <span class="badge bg-success">Согласован</span>
+                                    break;
+                                case ApprovalStatus.Rejected:
+                                    <span class="badge bg-danger">Отклонён</span>
+                                    break;
+                                case ApprovalStatus.Rework:
+                                    <span class="badge bg-info">На доработке</span>
+                                    break;
+                            }
+                        </td>
+                        <td>@(approval.Comment ?? "—")</td>
+                        <td>@(approval.ApprovedAt?.ToString("dd.MM.yyyy HH:mm") ?? approval.CreatedAt.ToString("dd.MM.yyyy HH:mm"))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> История согласований пуста
+    </div>
+}

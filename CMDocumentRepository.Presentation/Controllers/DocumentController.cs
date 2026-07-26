@@ -2,6 +2,7 @@ using CMDocumentRepository.Application.Commands;
 using CMDocumentRepository.Application.DTOs;
 using CMDocumentRepository.Application.Queries;
 using CMDocumentRepository.Domain.Enums;
+using CMDocumentRepository.Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,21 +14,34 @@ namespace CMDocumentRepository.Presentation.Controllers;
 public class DocumentController : Controller
 {
     private readonly IMediator _mediator;
+    private readonly IExportService _exportService;
 
-    public DocumentController(IMediator mediator)
+    public DocumentController(IMediator mediator, IExportService exportService)
     {
         _mediator = mediator;
+        _exportService = exportService;
     }
 
-    public async Task<IActionResult> Index(DocumentStatus? status, Guid? categoryId, Guid? documentTypeId)
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 10, DocumentStatus? status = null, Guid? categoryId = null, Guid? documentTypeId = null, string? keyword = null)
     {
-        var documents = await _mediator.Send(new GetAllDocumentsQuery
+        var result = await _mediator.Send(new GetPagedDocumentsQuery
         {
+            PageNumber = page,
+            PageSize = pageSize,
+            Keyword = keyword,
             Status = status,
             CategoryId = categoryId,
             DocumentTypeId = documentTypeId
         });
-        return View(documents);
+
+        ViewBag.DocumentTypes = await _mediator.Send(new GetAllDocumentTypesQuery());
+        ViewBag.Categories = await _mediator.Send(new GetAllCategoriesQuery());
+        ViewBag.CurrentStatus = status;
+        ViewBag.CurrentCategoryId = categoryId;
+        ViewBag.CurrentDocumentTypeId = documentTypeId;
+        ViewBag.CurrentKeyword = keyword;
+
+        return View(result);
     }
 
     public async Task<IActionResult> MyDocuments()
@@ -176,6 +190,22 @@ public class DocumentController : Controller
     {
         await _mediator.Send(new RestoreDocumentCommand { Id = id });
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    public async Task<IActionResult> Export(DocumentStatus? status, Guid? categoryId, Guid? documentTypeId, string? keyword)
+    {
+        var result = await _mediator.Send(new GetPagedDocumentsQuery
+        {
+            PageNumber = 1,
+            PageSize = 1000,
+            Keyword = keyword,
+            Status = status,
+            CategoryId = categoryId,
+            DocumentTypeId = documentTypeId
+        });
+
+        var excelBytes = _exportService.ExportDocumentsToExcel(result.Items);
+        return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"documents_{DateTime.Now:yyyyMMdd}.xlsx");
     }
 
     private Guid? GetUserId()

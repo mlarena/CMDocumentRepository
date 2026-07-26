@@ -1,17 +1,123 @@
+@model CMDocumentRepository.Application.Queries.DashboardStats
+
 @{
     ViewData["Title"] = "Администрирование";
 }
 
-<h4>Администрирование системы</h4>
+<h4>Панель администрирования</h4>
 <hr />
 
+<!-- Статистика -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <i class="bi bi-file-earmark-text text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.TotalDocuments</h3>
+                <p class="text-muted mb-0">Всего документов</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.ActiveDocuments</h3>
+                <p class="text-muted mb-0">Активных документов</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <i class="bi bi-clock text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.PendingApprovals</h3>
+                <p class="text-muted mb-0">На согласовании</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <i class="bi bi-people text-info" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.TotalUsers</h3>
+                <p class="text-muted mb-0">Пользователей</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-secondary">
+            <div class="card-body text-center">
+                <i class="bi bi-kanban text-secondary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.TotalTasks</h3>
+                <p class="text-muted mb-0">Всего задач</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <i class="bi bi-check2-all text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.CompletedTasks</h3>
+                <p class="text-muted mb-0">Завершённых задач</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-plus text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.DocumentsThisMonth</h3>
+                <p class="text-muted mb-0">Документов за месяц</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-dark">
+            <div class="card-body text-center">
+                <i class="bi bi-archive text-dark" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">@Model.DocumentsByStatus_Archived</h3>
+                <p class="text-muted mb-0">В архиве</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Диаграмма по статусам -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Документы по статусам</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Прогресс задач</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="tasksChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Управление -->
 <div class="row">
     <div class="col-md-4 mb-4">
         <div class="card h-100">
             <div class="card-body text-center">
                 <i class="bi bi-people text-primary" style="font-size: 3rem;"></i>
                 <h5 class="mt-3">Пользователи</h5>
-                <p class="text-muted">Управление учётными записями и ролями</p>
+                <p class="text-muted">Управление учётными записями</p>
             </div>
             <a asp-controller="User" asp-action="Index" class="card-footer bg-primary text-white text-center text-decoration-none">
                 Управление <i class="bi bi-arrow-right"></i>
@@ -24,7 +130,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-tag text-info" style="font-size: 3rem;"></i>
                 <h5 class="mt-3">Типы документов</h5>
-                <p class="text-muted">Справочник типов документов</p>
+                <p class="text-muted">Справочник типов</p>
             </div>
             <a asp-action="DocumentTypes" class="card-footer bg-info text-white text-center text-decoration-none">
                 Управление <i class="bi bi-arrow-right"></i>
@@ -37,7 +143,7 @@
             <div class="card-body text-center">
                 <i class="bi bi-folder text-warning" style="font-size: 3rem;"></i>
                 <h5 class="mt-3">Категории</h5>
-                <p class="text-muted">Справочник категорий документов</p>
+                <p class="text-muted">Справочник категорий</p>
             </div>
             <a asp-action="Categories" class="card-footer bg-warning text-dark text-center text-decoration-none">
                 Управление <i class="bi bi-arrow-right"></i>
@@ -45,3 +151,33 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Диаграмма статусов документов
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Черновик', 'На согласовании', 'Согласован', 'Архив'],
+                datasets: [{
+                    data: [@Model.DocumentsByStatus_Draft, @Model.DocumentsByStatus_Pending, @Model.DocumentsByStatus_Approved, @Model.DocumentsByStatus_Archived],
+                    backgroundColor: ['#6c757d', '#ffc107', '#198754', '#212529']
+                }]
+            }
+        });
+
+        // Диаграмма задач
+        new Chart(document.getElementById('tasksChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Всего', 'Завершено'],
+                datasets: [{
+                    label: 'Задачи',
+                    data: [@Model.TotalTasks, @Model.CompletedTasks],
+                    backgroundColor: ['#0d6efd', '#198754']
+                }]
+            }
+        });
+    </script>
+}

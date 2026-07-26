@@ -1,0 +1,47 @@
+@model List<CMDocumentRepository.Application.DTOs.DocumentDto>
+
+@{
+    ViewData["Title"] = "Корзина";
+}
+
+<h4>Корзина</h4>
+<hr />
+
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Номер</th>
+                    <th>Название</th>
+                    <th>Дата удаления</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var doc in Model)
+                {
+                    <tr>
+                        <td><code>@doc.DocumentNumber</code></td>
+                        <td>@doc.Title</td>
+                        <td>@(doc.DeletedAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")</td>
+                        <td>
+                            <form asp-action="Restore" asp-route-id="@doc.Id" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Восстановить
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Корзина пуста
+    </div>
+}
