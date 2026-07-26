@@ -1,14 +1,24 @@
 using CMDocumentRepository.Domain.Entities;
 using CMDocumentRepository.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CMDocumentRepository.Infrastructure.Data;
 
 public static class SeedData
 {
-    public static async Task InitializeAsync(AppDbContext context)
+    public static async Task InitializeAsync(AppDbContext context, ILogger? logger = null)
     {
-        await context.Database.EnsureCreatedAsync();
+        try
+        {
+            await context.Database.EnsureCreatedAsync();
+            logger?.LogInformation("Database ensured");
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Database error");
+            throw;
+        }
 
         if (!await context.Users.AnyAsync())
         {
@@ -26,6 +36,7 @@ public static class SeedData
             };
 
             context.Users.Add(superAdmin);
+            logger?.LogInformation("Created superadmin user");
         }
 
         if (!await context.DocumentTypes.AnyAsync())
@@ -43,6 +54,7 @@ public static class SeedData
             };
 
             context.DocumentTypes.AddRange(documentTypes);
+            logger?.LogInformation("Created document types");
         }
 
         if (!await context.Categories.AnyAsync())
@@ -58,8 +70,10 @@ public static class SeedData
             };
 
             context.Categories.AddRange(categories);
+            logger?.LogInformation("Created categories");
         }
 
         await context.SaveChangesAsync();
+        logger?.LogInformation("Seed data saved");
     }
 }

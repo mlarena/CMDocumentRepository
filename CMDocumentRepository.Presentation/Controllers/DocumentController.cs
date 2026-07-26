@@ -50,7 +50,8 @@ public class DocumentController : Controller
         if (!userId.HasValue) return RedirectToAction("Login", "Account");
 
         var documents = await _mediator.Send(new GetMyDocumentsQuery { UserId = userId.Value });
-        return View("Index", documents);
+        var result = PagedResult<DocumentDto>.Create(documents, documents.Count, 1, documents.Count);
+        return View("Index", result);
     }
 
     public async Task<IActionResult> ForApproval()
@@ -59,13 +60,15 @@ public class DocumentController : Controller
         if (!userId.HasValue) return RedirectToAction("Login", "Account");
 
         var documents = await _mediator.Send(new GetDocumentsForApprovalQuery { UserId = userId.Value });
-        return View("Index", documents);
+        var result = PagedResult<DocumentDto>.Create(documents, documents.Count, 1, documents.Count);
+        return View("Index", result);
     }
 
     public async Task<IActionResult> Trash()
     {
         var documents = await _mediator.Send(new GetDeletedDocumentsQuery());
-        return View("Index", documents);
+        var result = PagedResult<DocumentDto>.Create(documents, documents.Count, 1, documents.Count);
+        return View("Index", result);
     }
 
     public async Task<IActionResult> Details(Guid id)
@@ -101,6 +104,15 @@ public class DocumentController : Controller
         var userId = GetUserId();
         if (!userId.HasValue) return RedirectToAction("Login", "Account");
 
+        Stream? fileStream = null;
+        var fileName = model.FileName;
+        var uploadedFile = Request.Form.Files.GetFile("File");
+        if (uploadedFile != null && uploadedFile.Length > 0)
+        {
+            fileStream = uploadedFile.OpenReadStream();
+            fileName = uploadedFile.FileName;
+        }
+
         var command = new CreateDocumentCommand
         {
             Title = model.Title,
@@ -109,8 +121,8 @@ public class DocumentController : Controller
             DocumentTypeId = model.DocumentTypeId,
             ValidFrom = model.ValidFrom,
             ValidUntil = model.ValidUntil,
-            File = model.File,
-            FileName = model.FileName,
+            File = fileStream,
+            FileName = fileName,
             CreatedBy = userId.Value
         };
 
@@ -154,6 +166,15 @@ public class DocumentController : Controller
         var userId = GetUserId();
         if (!userId.HasValue) return RedirectToAction("Login", "Account");
 
+        Stream? fileStream = null;
+        var fileName = model.FileName;
+        var uploadedFile = Request.Form.Files.GetFile("File");
+        if (uploadedFile != null && uploadedFile.Length > 0)
+        {
+            fileStream = uploadedFile.OpenReadStream();
+            fileName = uploadedFile.FileName;
+        }
+
         var command = new UpdateDocumentCommand
         {
             Id = id,
@@ -163,8 +184,8 @@ public class DocumentController : Controller
             DocumentTypeId = model.DocumentTypeId,
             ValidFrom = model.ValidFrom,
             ValidUntil = model.ValidUntil,
-            File = model.File,
-            FileName = model.FileName,
+            File = fileStream,
+            FileName = fileName,
             ChangeComment = model.ChangeComment,
             UpdatedBy = userId.Value
         };

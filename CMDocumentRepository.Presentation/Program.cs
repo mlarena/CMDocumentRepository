@@ -6,7 +6,11 @@ using CMDocumentRepository.Infrastructure.Services;
 using CMDocumentRepository.Presentation.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Serilog;
+using System.Linq;
+
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +24,9 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptions => npgsqlOptions.SetPostgresVersion(15, 0))
+    .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
@@ -55,20 +61,44 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+Log.Information("Starting application...");
+
+try
 {
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await context.Database.MigrateAsync();
-    await SeedData.InitializeAsync(context);
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+        Log.Information("Connecting to database...");
+        var canConnect = await context.Database.CanConnectAsync();
+        if (!canConnect)
+        {
+            Log.Error("Cannot connect to database!");
+        }
+        else
+        {
+            Log.Information("Database connected. Applying migrations...");
+            await context.Database.MigrateAsync();
+            Log.Information("Migrations applied. Seeding data...");
+            if (!context.Users.Any())
+            {
+                await SeedData.InitializeAsync(context, logger);
+                Log.Information("Seed data saved");
+            }
+            else
+            {
+                Log.Information("Database already seeded");
+            }
+            Log.Information("Database ready.");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Database initialization failed");
 }
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
@@ -81,5 +111,7 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+Log.Information("Application started");
 
 app.Run();
