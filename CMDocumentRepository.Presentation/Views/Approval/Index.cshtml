@@ -1,0 +1,84 @@
+@model List<CMDocumentRepository.Application.DTOs.ApprovalDto>
+
+@{
+    ViewData["Title"] = "Согласование";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Документы на согласовании</h4>
+    <a asp-action="History" class="btn btn-outline-secondary">
+        <i class="bi bi-clock-history"></i> История согласований
+    </a>
+</div>
+
+@if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Номер</th>
+                    <th>Название</th>
+                    <th>Отправитель</th>
+                    <th>Статус</th>
+                    <th>Дата</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var approval in Model)
+                {
+                    <tr>
+                        <td><code>@approval.DocumentNumber</code></td>
+                        <td>@approval.DocumentTitle</td>
+                        <td>@approval.ApproverName</td>
+                        <td>
+                            @switch (approval.Status)
+                            {
+                                case ApprovalStatus.Pending:
+                                    <span class="badge bg-warning text-dark">Ожидает</span>
+                                    break;
+                                case ApprovalStatus.Approved:
+                                    <span class="badge bg-success">Согласован</span>
+                                    break;
+                                case ApprovalStatus.Rejected:
+                                    <span class="badge bg-danger">Отклонён</span>
+                                    break;
+                                case ApprovalStatus.Rework:
+                                    <span class="badge bg-info">На доработке</span>
+                                    break;
+                            }
+                        </td>
+                        <td>@approval.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            @if (approval.Status == ApprovalStatus.Pending)
+                            {
+                                <div class="btn-group btn-group-sm">
+                                    <form asp-action="Approve" method="post" class="d-inline">
+                                        <input type="hidden" name="approvalId" value="@approval.Id" />
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="Reject" method="post" class="d-inline">
+                                        <input type="hidden" name="approvalId" value="@approval.Id" />
+                                        <input type="hidden" name="comment" value="Отклонено" />
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Нет документов на согласовании
+    </div>
+}

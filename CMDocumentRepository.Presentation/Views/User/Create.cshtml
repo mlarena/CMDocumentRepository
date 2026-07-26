@@ -1,0 +1,73 @@
+@model CMDocumentRepository.Application.DTOs.CreateUserDto
+
+@{
+    ViewData["Title"] = "Создание пользователя";
+}
+
+<h4>Создание нового пользователя</h4>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="UserName" class="form-label">Имя пользователя *</label>
+                <input asp-for="UserName" class="form-control" />
+                <span asp-validation-for="UserName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email *</label>
+                <input asp-for="Email" type="email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Пароль *</label>
+                <input asp-for="Password" type="password" class="form-control" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LastName" class="form-label">Фамилия *</label>
+                <input asp-for="LastName" class="form-control" />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="FirstName" class="form-label">Имя *</label>
+                <input asp-for="FirstName" class="form-control" />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="MiddleName" class="form-label">Отчество</label>
+                <input asp-for="MiddleName" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Role" class="form-label">Роль *</label>
+                <select asp-for="Role" class="form-select">
+                    <option value="@UserRole.User">Пользователь</option>
+                    <option value="@UserRole.Manager">Менеджер</option>
+                    <option value="@UserRole.Admin">Администратор</option>
+                    <option value="@UserRole.Auditor">Аудитор</option>
+                    <option value="@UserRole.Guest">Гость</option>
+                </select>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Создать
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

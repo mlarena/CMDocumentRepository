@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "Поиск документов";
+}
+
+<h4>Поиск документов</h4>
+<hr />
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Results" method="post">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Ключевое слово</label>
+                        <input type="text" name="keyword" class="form-control" placeholder="Введите название, описание или номер документа" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Статус</label>
+                            <select name="status" class="form-select">
+                                <option value="">Все статусы</option>
+                                <option value="Draft">Черновик</option>
+                                <option value="PendingApproval">На согласовании</option>
+                                <option value="Approved">Согласован</option>
+                                <option value="Rejected">Отклонён</option>
+                                <option value="Active">Действует</option>
+                                <option value="Archived">Архив</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата от</label>
+                            <input type="date" name="dateFrom" class="form-control" />
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата до</label>
+                            <input type="date" name="dateTo" class="form-control" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Найти
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
