@@ -17,4 +17,5 @@ public class User : BaseEntity
     public DateTime? LockedUntil { get; set; }
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiry { get; set; }
+    public DateTime? LastLoginAt { get; set; }
 }
