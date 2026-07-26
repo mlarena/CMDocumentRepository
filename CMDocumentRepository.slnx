@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="CMDocumentRepository.Application/CMDocumentRepository.Application.csproj" />
+  <Project Path="CMDocumentRepository.Domain/CMDocumentRepository.Domain.csproj" />
+  <Project Path="CMDocumentRepository.Infrastructure/CMDocumentRepository.Infrastructure.csproj" />
+  <Project Path="CMDocumentRepository.Presentation/CMDocumentRepository.Presentation.csproj" />
+  <Project Path="CMDocumentRepository.Tests/CMDocumentRepository.Tests.csproj" />
+</Solution>
