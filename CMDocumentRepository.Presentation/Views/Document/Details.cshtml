@@ -1,0 +1,179 @@
+@model CMDocumentRepository.Application.DTOs.DocumentDto
+
+@{
+    ViewData["Title"] = $"Документ {Model.DocumentNumber}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>@Model.Title</h4>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Редактировать
+        </a>
+        @if (!Model.IsDeleted)
+        {
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Переместить в корзину?')">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </form>
+        }
+        else
+        {
+            <form asp-action="Restore" asp-route-id="@Model.Id" method="post" class="d-inline">
+                <button type="submit" class="btn btn-outline-success">
+                    <i class="bi bi-arrow-counterclockwise"></i> Восстановить
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Информация о документе</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Номер:</dt>
+                    <dd class="col-sm-9"><code>@Model.DocumentNumber</code></dd>
+
+                    <dt class="col-sm-3">Название:</dt>
+                    <dd class="col-sm-9">@Model.Title</dd>
+
+                    <dt class="col-sm-3">Описание:</dt>
+                    <dd class="col-sm-9">@(Model.Description ?? "—")</dd>
+
+                    <dt class="col-sm-3">Тип:</dt>
+                    <dd class="col-sm-9">@Model.DocumentTypeName</dd>
+
+                    <dt class="col-sm-3">Категория:</dt>
+                    <dd class="col-sm-9">@Model.CategoryName</dd>
+
+                    <dt class="col-sm-3">Версия:</dt>
+                    <dd class="col-sm-9">@Model.Version.ToString("F1")</dd>
+
+                    <dt class="col-sm-3">Статус:</dt>
+                    <dd class="col-sm-9">
+                        @switch (Model.Status)
+                        {
+                            case CMDocumentRepository.Domain.Enums.DocumentStatus.Draft:
+                                <span class="badge bg-secondary">Черновик</span>
+                                break;
+                            case CMDocumentRepository.Domain.Enums.DocumentStatus.PendingApproval:
+                                <span class="badge bg-warning text-dark">На согласовании</span>
+                                break;
+                            case CMDocumentRepository.Domain.Enums.DocumentStatus.Approved:
+                                <span class="badge bg-success">Согласован</span>
+                                break;
+                            case CMDocumentRepository.Domain.Enums.DocumentStatus.Rejected:
+                                <span class="badge bg-danger">Отклонён</span>
+                                break;
+                            case CMDocumentRepository.Domain.Enums.DocumentStatus.Rework:
+                                <span class="badge bg-info">На доработке</span>
+                                break;
+                            case CMDocumentRepository.Domain.Enums.DocumentStatus.Active:
+                                <span class="badge bg-primary">Действует</span>
+                                break;
+                            case CMDocumentRepository.Domain.Enums.DocumentStatus.Archived:
+                                <span class="badge bg-dark">Архив</span>
+                                break;
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Автор:</dt>
+                    <dd class="col-sm-9">@Model.CreatorName</dd>
+
+                    <dt class="col-sm-3">Дата создания:</dt>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToString("dd.MM.yyyy HH:mm")</dd>
+
+                    @if (Model.UpdatedAt.HasValue)
+                    {
+                        <dt class="col-sm-3">Дата обновления:</dt>
+                        <dd class="col-sm-9">@Model.UpdatedAt.Value.ToString("dd.MM.yyyy HH:mm")</dd>
+                    }
+
+                    @if (Model.ValidFrom.HasValue || Model.ValidUntil.HasValue)
+                    {
+                        <dt class="col-sm-3">Срок действия:</dt>
+                        <dd class="col-sm-9">
+                            @(Model.ValidFrom?.ToString("dd.MM.yyyy") ?? "—") — @(Model.ValidUntil?.ToString("dd.MM.yyyy") ?? "—")
+                        </dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.FileExtension))
+                    {
+                        <dt class="col-sm-3">Файл:</dt>
+                        <dd class="col-sm-9">
+                            <i class="bi bi-file-earmark"></i> @Model.FileExtension.ToUpper() (@(Model.FileSize / 1024) КБ)
+                        </dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        @if (ViewBag.Versions != null)
+        {
+            var versions = (List<CMDocumentRepository.Application.DTOs.DocumentVersionDto>)ViewBag.Versions;
+            if (versions.Any())
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">История версий</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Версия</th>
+                                        <th>Дата</th>
+                                        <th>Комментарий</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var v in versions)
+                                    {
+                                        <tr>
+                                            <td>@v.VersionNumber.ToString("F1")</td>
+                                            <td>@v.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>@(v.ChangeComment ?? "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Действия</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.Status == CMDocumentRepository.Domain.Enums.DocumentStatus.Draft ||
+                      Model.Status == CMDocumentRepository.Domain.Enums.DocumentStatus.Rework)
+                {
+                    <form asp-controller="Approval" asp-action="SendForApproval" method="post">
+                        <input type="hidden" name="documentId" value="@Model.Id" />
+                        <div class="mb-2">
+                            <label class="form-label small">Согласующие:</label>
+                            <select name="approverIds" class="form-select form-select-sm" multiple>
+                                <option value="">Выберите согласующих</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="bi bi-send"></i> Отправить на согласование
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>

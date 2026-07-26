@@ -1,31 +1,41 @@
-using System.Diagnostics;
+using CMDocumentRepository.Application.Queries;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using CMDocumentRepository.Presentation.Models;
+using System.Security.Claims;
 
 namespace CMDocumentRepository.Presentation.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
-    private readonly ILogger<HomeController> _logger;
+    private readonly IMediator _mediator;
 
-    public HomeController(ILogger<HomeController> logger)
+    public HomeController(IMediator mediator)
     {
-        _logger = logger;
+        _mediator = mediator;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
+        var userId = GetUserId();
+        if (userId.HasValue)
+        {
+            var documents = await _mediator.Send(new GetMyDocumentsQuery { UserId = userId.Value });
+            var tasks = await _mediator.Send(new GetMyTasksQuery { UserId = userId.Value });
+            var approvals = await _mediator.Send(new GetPendingApprovalsQuery { ApproverId = userId.Value });
+
+            ViewBag.MyDocuments = documents.Count;
+            ViewBag.MyTasks = tasks.Count;
+            ViewBag.PendingApprovals = approvals.Count;
+        }
+
         return View();
     }
 
-    public IActionResult Privacy()
+    private Guid? GetUserId()
     {
-        return View();
-    }
-
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
-    {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+        return claim != null ? Guid.Parse(claim.Value) : null;
     }
 }

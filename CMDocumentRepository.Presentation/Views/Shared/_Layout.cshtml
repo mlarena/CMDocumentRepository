@@ -1,50 +1,154 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - CMDocumentRepository.Presentation</title>
-    <script type="importmap"></script>
+    <title>@ViewData["Title"] - CMDocumentRepository</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/CMDocumentRepository.Presentation.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">CMDocumentRepository.Presentation</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <div class="d-flex">
+            <nav id="sidebar" class="sidebar bg-dark text-white">
+                <div class="sidebar-header p-3">
+                    <h5 class="mb-0">CMDocumentRepository</h5>
+                    <small class="text-muted">Система управления документами</small>
+                </div>
+                <hr class="text-secondary my-0" />
+                <ul class="nav flex-column p-2">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Home" asp-action="Index">
+                            <i class="bi bi-house-door"></i> Главная
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Document" asp-action="Index">
+                            <i class="bi bi-file-earmark-text"></i> Документы
+                        </a>
+                        <ul class="nav flex-column ms-3">
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 small" asp-controller="Document" asp-action="MyDocuments">
+                                    <i class="bi bi-person"></i> Мои документы
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 small" asp-controller="Document" asp-action="ForApproval">
+                                    <i class="bi bi-clock"></i> На согласовании
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 small" asp-controller="Document" asp-action="Trash">
+                                    <i class="bi bi-trash"></i> Корзина
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Approval" asp-action="Index">
+                            <i class="bi bi-check2-square"></i> Согласование
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Task" asp-action="Kanban">
+                            <i class="bi bi-kanban"></i> Kanban-доска
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Search" asp-action="Index">
+                            <i class="bi bi-search"></i> Поиск
+                        </a>
+                    </li>
+                    @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+                    {
+                        <hr class="text-secondary" />
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-white" asp-controller="Admin" asp-action="Index">
+                                <i class="bi bi-gear"></i> Администрирование
+                            </a>
+                            <ul class="nav flex-column ms-3">
+                                <li class="nav-item">
+                                    <a class="nav-link text-white-50 small" asp-controller="User" asp-action="Index">
+                                        <i class="bi bi-people"></i> Пользователи
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-white-50 small" asp-controller="Admin" asp-action="DocumentTypes">
+                                        <i class="bi bi-tag"></i> Типы документов
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-white-50 small" asp-controller="Admin" asp-action="Categories">
+                                        <i class="bi bi-folder"></i> Категории
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
+                    }
+                </ul>
+                <div class="sidebar-footer p-3 mt-auto border-top border-secondary">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <span class="small">@User.Identity?.Name</span>
+                    </div>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="mt-2">
+                        <button type="submit" class="btn btn-outline-light btn-sm w-100">
+                            <i class="bi bi-box-arrow-left"></i> Выйти
+                        </button>
+                    </form>
+                </div>
+            </nav>
+
+            <div id="content" class="content flex-grow-1">
+                <nav class="navbar navbar-light bg-light border-bottom px-3">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleSidebar()">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <span class="navbar-text">
+                        @ViewData["Title"]
+                    </span>
+                </nav>
+
+                <div class="container-fluid p-4">
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+                    @RenderBody()
                 </div>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - CMDocumentRepository.Presentation - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
-    </footer>
+    }
+    else
+    {
+        <div class="container">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
+        </div>
+    }
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+            document.getElementById('content').classList.toggle('expanded');
+        }
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
