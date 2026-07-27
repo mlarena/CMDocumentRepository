@@ -251,6 +251,12 @@ public class DocumentController : Controller
         return File(stream, "application/octet-stream", downloadName);
     }
 
+    public async Task<IActionResult> Gantt()
+    {
+        var data = await _mediator.Send(new GetGanttDataQuery());
+        return View(data);
+    }
+
     public async Task<IActionResult> Export(DocumentStatus? status, Guid? categoryId, Guid? documentTypeId, string? keyword)
     {
         var result = await _mediator.Send(new GetPagedDocumentsQuery

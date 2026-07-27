@@ -918,3 +918,78 @@ public class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery, List<
         return result;
     }
 }
+
+public class GetGanttDataQueryHandler : IRequestHandler<GetGanttDataQuery, GanttDataDto>
+{
+    private readonly IDocumentRepository _documentRepository;
+    private readonly ITaskRepository _taskRepository;
+
+    public GetGanttDataQueryHandler(IDocumentRepository documentRepository, ITaskRepository taskRepository)
+    {
+        _documentRepository = documentRepository;
+        _taskRepository = taskRepository;
+    }
+
+    public async Task<GanttDataDto> Handle(GetGanttDataQuery request, CancellationToken cancellationToken)
+    {
+        var items = new List<GanttItemDto>();
+
+        // Документы с заданными сроками действия
+        var docs = await _documentRepository.GetAllAsync();
+        foreach (var doc in docs.Where(d => !d.IsDeleted && d.ValidFrom.HasValue && d.ValidUntil.HasValue))
+        {
+            var progress = doc.Status switch
+            {
+                DocumentStatus.Active => 100,
+                DocumentStatus.Approved => 100,
+                DocumentStatus.Archived => 100,
+                DocumentStatus.Draft => 0,
+                DocumentStatus.Rejected => 0,
+                _ => 50
+            };
+
+            items.Add(new GanttItemDto
+            {
+                Id = doc.Id,
+                Name = doc.Title,
+                Type = "document",
+                Start = doc.ValidFrom!.Value,
+                End = doc.ValidUntil!.Value,
+                Progress = progress,
+                Url = $"/Document/Details/{doc.Id}",
+                Status = doc.Status.ToString()
+            });
+        }
+
+        // Задачи с дедлайном
+        var tasks = await _taskRepository.GetAllAsync();
+        foreach (var task in tasks.Where(t => t.DueDate.HasValue))
+        {
+            var start = task.CreatedAt;
+            var end = task.DueDate!.Value;
+            if (end <= start) end = start.AddDays(1);
+
+            var progress = task.Status switch
+            {
+                AppTaskStatus.Done => 100,
+                AppTaskStatus.Review => 75,
+                AppTaskStatus.InProgress => 50,
+                _ => 0
+            };
+
+            items.Add(new GanttItemDto
+            {
+                Id = task.Id,
+                Name = task.Title,
+                Type = "task",
+                Start = start,
+                End = end,
+                Progress = progress,
+                Url = $"/Task/Details/{task.Id}",
+                Status = task.Status.ToString()
+            });
+        }
+
+        return new GanttDataDto { Items = items };
+    }
+}
