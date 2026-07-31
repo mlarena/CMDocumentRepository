@@ -1,0 +1,6 @@
+dotnet run --project CMDocumentRepository.Presentation\CMDocumentRepository.Presentation.csproj
+
+
+
+
+
