@@ -1,5 +1,19 @@
 dotnet run --project CMDocumentRepository.Presentation\CMDocumentRepository.Presentation.csproj
 
+scp "C:\dev\CMDocumentRepository\Release\CMDocumentRepositoryInstall.zip" devuser@192.168.192.147:/tmp
+scp "C:\dev\CMDocumentRepository\Release\CMDocumentRepositoryInstall.zip" debusr@192.168.3.74 :/tmp
+
+ 
+psql -U postgres -h localhost -d postgres
+
+CREATE DATABASE "CMDocumentRepository";
+
+Start service:    sudo systemctl start cm-document-repository
+Stop service:     sudo systemctl stop cm-document-repository
+Restart service:  sudo systemctl restart cm-document-repository
+Check status:     sudo systemctl status cm-document-repository
+View logs:        sudo journalctl -u cm-document-repository -f
+
 
 
 

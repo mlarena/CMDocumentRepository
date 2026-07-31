@@ -33,11 +33,11 @@ foreach ($project in $projects) {
         exit $LASTEXITCODE
     }
 
-    # 3. Create ZIP
+    # 3. Create inner ZIP (application files)
     $zipPath = Join-Path $releaseDir "$deployName.zip"
     if (Test-Path $zipPath) { Remove-Item $zipPath }
 
-    Write-Host "Archiving to $([System.IO.Path]::GetFileName($zipPath))..." -ForegroundColor Yellow
+    Write-Host "Archiving application files to $([System.IO.Path]::GetFileName($zipPath))..." -ForegroundColor Yellow
 
     Push-Location $project.Out
     try {
@@ -74,11 +74,6 @@ foreach ($project in $projects) {
                 [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipArchive, (Join-Path $project.Out $item), $relativeName)
             }
         }
-        # Install script (from scripts/ directory, added at zip root)
-        $installScript = Join-Path $basePath "scripts\install.sh"
-        if (Test-Path $installScript) {
-            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipArchive, $installScript, "install.sh")
-        }
 
         $zipArchive.Dispose()
     }
@@ -88,9 +83,35 @@ foreach ($project in $projects) {
 
     $zipSize = "{0:N1} MB" -f ((Get-Item $zipPath).Length / 1MB)
     Write-Host "Done: $zipPath ($zipSize)" -ForegroundColor Green
+
+    # 4. Create outer install ZIP (inner zip + install.sh)
+    $installZipName = "${deployName}Install"
+    $installZipPath = Join-Path $releaseDir "$installZipName.zip"
+    if (Test-Path $installZipPath) { Remove-Item $installZipPath }
+
+    Write-Host "Archiving to $installZipName.zip..." -ForegroundColor Yellow
+
+    $installScript = Join-Path $basePath "scripts\install.sh"
+    if (-not (Test-Path $installScript)) {
+        Write-Host "ERROR: install.sh not found at $installScript" -ForegroundColor Red
+        exit 1
+    }
+
+    $installArchive = [System.IO.Compression.ZipFile]::Open($installZipPath, "Create")
+    try {
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($installArchive, $zipPath, "$deployName.zip")
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($installArchive, $installScript, "install.sh")
+    }
+    finally {
+        $installArchive.Dispose()
+    }
+
+    $installZipSize = "{0:N1} MB" -f ((Get-Item $installZipPath).Length / 1MB)
+    Write-Host "Done: $installZipPath ($installZipSize)" -ForegroundColor Green
 }
 
 Write-Host ""
 Write-Host "=== Publish complete ===" -ForegroundColor Green
-Write-Host "Output directory : $releaseDir\$deployName" -ForegroundColor Gray
-Write-Host "Deployment archive: $releaseDir\$deployName.zip" -ForegroundColor Gray
+Write-Host "Output directory   : $releaseDir\$deployName" -ForegroundColor Gray
+Write-Host "Application archive: $releaseDir\$deployName.zip" -ForegroundColor Gray
+Write-Host "Install archive    : $releaseDir\${deployName}Install.zip" -ForegroundColor Gray
