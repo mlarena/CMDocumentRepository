@@ -1,0 +1,144 @@
+@model CMDocumentRepository.Application.DTOs.GanttDataDto
+@{
+    ViewData["Title"] = "Диаграмма Ганта";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-bar-chart-steps"></i> Диаграмма Ганта</h4>
+    <div>
+        <span class="badge bg-primary me-1"><i class="bi bi-file-earmark-text"></i> Документы</span>
+        <span class="badge bg-success"><i class="bi bi-check2-square"></i> Задачи</span>
+    </div>
+</div>
+
+@if (!Model.Items.Any())
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Нет данных для отображения. Добавьте документы с датами действия (от/до) или задачи с дедлайном.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body p-0" style="overflow-x: auto;">
+            <table class="table table-sm mb-0" style="min-width: 900px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 280px;">Название</th>
+                        <th style="width: 90px;">Тип</th>
+                        <th style="width: 100px;">Начало</th>
+                        <th style="width: 100px;">Окончание</th>
+                        <th style="width: 80px;">Статус</th>
+                        <th>Шкала</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var allItems = Model.Items.OrderBy(i => i.Start).ToList();
+                        var minDate = allItems.Min(i => i.Start);
+                        var maxDate = allItems.Max(i => i.End);
+                        var totalDays = Math.Max((maxDate - minDate).Days, 1);
+                    }
+                    @foreach (var item in allItems)
+                    {
+                        var startOffset = Math.Max(0, (item.Start - minDate).TotalDays / totalDays * 100);
+                        var width = Math.Max(2, (item.End - item.Start).TotalDays / totalDays * 100);
+                        var barClass = item.Type == "document" ? "bg-primary" : "bg-success";
+                        var icon = item.Type == "document" ? "bi-file-earmark-text" : "bi-check2-square";
+                        var progressColor = item.Progress >= 100 ? "bg-success" : item.Progress >= 50 ? "bg-warning" : "bg-danger";
+
+                        <tr>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.Url))
+                                {
+                                    <a href="@item.Url" class="text-decoration-none">
+                                        <i class="bi @icon me-1"></i>@item.Name
+                                    </a>
+                                }
+                                else
+                                {
+                                    <i class="bi @icon me-1"></i>@item.Name
+                                }
+                            </td>
+                            <td>
+                                @if (item.Type == "document")
+                                {
+                                    <span class="badge bg-primary">Документ</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Задача</span>
+                                }
+                            </td>
+                            <td class="small">@item.Start.ToString("dd.MM.yyyy")</td>
+                            <td class="small">@item.End.ToString("dd.MM.yyyy")</td>
+                            <td><span class="badge @progressColor">@item.Progress%</span></td>
+                            <td style="vertical-align: middle;">
+                                <div style="position: relative; height: 24px; background: #f0f0f0; border-radius: 4px; overflow: hidden;">
+                                    <div class="@barClass" style="position: absolute; left: @startOffset.ToString("F1")%; width: @width.ToString("F1")%; height: 100%; border-radius: 4px; opacity: 0.8;" title="@item.Start.ToString("dd.MM.yyyy") — @item.End.ToString("dd.MM.yyyy")">
+                                        <div class="@progressColor" style="width: @item.Progress%; height: 100%; border-radius: 4px; opacity: 0.5;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header"><i class="bi bi-calendar3"></i> Временная шкала</div>
+        <div class="card-body p-0" style="overflow-x: auto;">
+            <div style="position: relative; min-width: 900px; padding: 10px 0;">
+                @{
+                    var current = new DateTime(minDate.Year, minDate.Month, 1);
+                    var endMonth = new DateTime(maxDate.Year, maxDate.Month, 1).AddMonths(1);
+                }
+                <div class="d-flex border-bottom pb-1 mb-2" style="position: relative; height: 30px;">
+                    @while (current < endMonth)
+                    {
+                        var monthOffset = (current - minDate).TotalDays / totalDays * 100;
+                        var nextMonth = current.AddMonths(1);
+                        var monthWidth = (nextMonth - current).TotalDays / totalDays * 100;
+                        <div style="position: absolute; left: @monthOffset.ToString("F1")%; width: @monthWidth.ToString("F1")%; font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden;">
+                            @current.ToString("MMM yyyy")
+                        </div>
+                        current = nextMonth;
+                    }
+                </div>
+
+                @foreach (var item in allItems)
+                {
+                    var startOffset = Math.Max(0, (item.Start - minDate).TotalDays / totalDays * 100);
+                    var width = Math.Max(1, (item.End - item.Start).TotalDays / totalDays * 100);
+                    var barClass = item.Type == "document" ? "bg-primary" : "bg-success";
+
+                    <div style="position: relative; height: 22px; margin-bottom: 2px;" title="@item.Name: @item.Start.ToString("dd.MM.yyyy") — @item.End.ToString("dd.MM.yyyy")">
+                        <div class="@barClass" style="position: absolute; left: @startOffset.ToString("F1")%; width: @width.ToString("F1")%; height: 16px; border-radius: 3px; opacity: 0.8; top: 3px; min-width: 4px;">
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="text-primary">@Model.Items.Count(i => i.Type == "document")</h5>
+                    <small class="text-muted">Документов на шкале</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="text-success">@Model.Items.Count(i => i.Type == "task")</h5>
+                    <small class="text-muted">Задач на шкале</small>
+                </div>
+            </div>
+        </div>
+    </div>
+}

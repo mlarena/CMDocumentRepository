@@ -925,21 +925,39 @@ public class GetGanttDataQueryHandler : IRequestHandler<GetGanttDataQuery, Gantt
 {
     private readonly IDocumentRepository _documentRepository;
     private readonly ITaskRepository _taskRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly IDocumentTypeRepository _documentTypeRepository;
 
-    public GetGanttDataQueryHandler(IDocumentRepository documentRepository, ITaskRepository taskRepository)
+    public GetGanttDataQueryHandler(
+        IDocumentRepository documentRepository,
+        ITaskRepository taskRepository,
+        IUserRepository userRepository,
+        ICategoryRepository categoryRepository,
+        IDocumentTypeRepository documentTypeRepository)
     {
         _documentRepository = documentRepository;
         _taskRepository = taskRepository;
+        _userRepository = userRepository;
+        _categoryRepository = categoryRepository;
+        _documentTypeRepository = documentTypeRepository;
     }
 
     public async Task<GanttDataDto> Handle(GetGanttDataQuery request, CancellationToken cancellationToken)
     {
         var items = new List<GanttItemDto>();
+        var allUsers = await _userRepository.GetAllAsync();
+        var allCategories = await _categoryRepository.GetAllAsync();
+        var allDocTypes = await _documentTypeRepository.GetAllAsync();
 
-        // Документы с заданными сроками действия
+        // --- Документы ---
         var docs = await _documentRepository.GetAllAsync();
         foreach (var doc in docs.Where(d => !d.IsDeleted && d.ValidFrom.HasValue && d.ValidUntil.HasValue))
         {
+            var category = allCategories.FirstOrDefault(c => c.Id == doc.CategoryId);
+            var docType = allDocTypes.FirstOrDefault(t => t.Id == doc.DocumentTypeId);
+            var creator = allUsers.FirstOrDefault(u => u.Id == doc.CreatedBy);
+
             var progress = doc.Status switch
             {
                 DocumentStatus.Active => 100,
@@ -948,6 +966,16 @@ public class GetGanttDataQueryHandler : IRequestHandler<GetGanttDataQuery, Gantt
                 DocumentStatus.Draft => 0,
                 DocumentStatus.Rejected => 0,
                 _ => 50
+            };
+
+            var color = doc.Status switch
+            {
+                DocumentStatus.Active => "#10b981",
+                DocumentStatus.Approved => "#3b82f6",
+                DocumentStatus.Archived => "#6b7280",
+                DocumentStatus.Draft => "#f59e0b",
+                DocumentStatus.Rejected => "#ef4444",
+                _ => "#8b5cf6"
             };
 
             items.Add(new GanttItemDto
@@ -959,27 +987,47 @@ public class GetGanttDataQueryHandler : IRequestHandler<GetGanttDataQuery, Gantt
                 End = doc.ValidUntil!.Value,
                 Progress = progress,
                 Url = $"/Document/Details/{doc.Id}",
-                Status = doc.Status.ToString()
+                Status = doc.Status.ToString(),
+                Priority = doc.Status == DocumentStatus.Rejected ? "High" : "Medium",
+                AssigneeName = creator != null ? $"{creator.LastName} {creator.FirstName}".Trim() : null,
+                CategoryName = category?.Name,
+                DocumentTypeName = docType?.Name,
+                Group = category?.Name ?? "Без категории",
+                Color = color,
+                Description = doc.Description
             });
         }
 
-        // Задачи с дедлайном
+        // --- Задачи ---
         var tasks = await _taskRepository.GetAllAsync();
-        foreach (var task in tasks.Where(t => t.DueDate.HasValue))
+        var taskDict = new Dictionary<Guid, GanttItemDto>();
+
+        foreach (var task in tasks)
         {
             var start = task.CreatedAt;
-            var end = task.DueDate!.Value;
+            var end = task.DueDate.HasValue ? task.DueDate.Value : start.AddDays(7);
             if (end <= start) end = start.AddDays(1);
 
+            var assignee = allUsers.FirstOrDefault(u => u.Id == task.AssigneeId);
             var progress = task.Status switch
             {
                 AppTaskStatus.Done => 100,
                 AppTaskStatus.Review => 75,
                 AppTaskStatus.InProgress => 50,
+                AppTaskStatus.Backlog => 0,
                 _ => 0
             };
 
-            items.Add(new GanttItemDto
+            var color = task.Priority switch
+            {
+                TaskPriority.Critical => "#ef4444",
+                TaskPriority.High => "#f97316",
+                TaskPriority.Medium => "#3b82f6",
+                TaskPriority.Low => "#10b981",
+                _ => "#6b7280"
+            };
+
+            var item = new GanttItemDto
             {
                 Id = task.Id,
                 Name = task.Title,
@@ -988,10 +1036,34 @@ public class GetGanttDataQueryHandler : IRequestHandler<GetGanttDataQuery, Gantt
                 End = end,
                 Progress = progress,
                 Url = $"/Task/Details/{task.Id}",
-                Status = task.Status.ToString()
-            });
+                Status = task.Status.ToString(),
+                Priority = task.Priority.ToString(),
+                AssigneeName = assignee != null ? $"{assignee.LastName} {assignee.FirstName}".Trim() : null,
+                Group = "Задачи",
+                Color = color,
+                Description = task.Description,
+                ParentTaskId = null
+            };
+
+            taskDict[task.Id] = item;
+            items.Add(item);
         }
 
-        return new GanttDataDto { Items = items };
+        // --- Зависимости задач ---
+        var dependencies = new List<GanttDependencyDto>();
+        // Пока зависимости не реализованы на уровне сущности,
+        // но структура DTO готова для будущего добавления ParentTaskId в AppTask
+
+        // --- Группировка ---
+        var groups = items.Select(i => i.Group ?? "Без группы").Where(g => !string.IsNullOrEmpty(g)).Distinct().ToList();
+
+        return new GanttDataDto
+        {
+            Items = items.OrderBy(i => i.Start).ToList(),
+            Dependencies = dependencies,
+            TodayDate = DateTime.Now.Date,
+            ZoomLevel = "month",
+            Groups = groups
+        };
     }
 }
