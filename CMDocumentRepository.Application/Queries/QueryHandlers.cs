@@ -911,6 +911,8 @@ public class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery, List<
                 Action = log.Action,
                 EntityType = log.EntityType,
                 EntityId = log.EntityId,
+                OldValues = log.OldValues?.RootElement.ToString(),
+                NewValues = log.NewValues?.RootElement.ToString(),
                 CreatedAt = log.CreatedAt
             });
         }

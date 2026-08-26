@@ -19,6 +19,10 @@
                     <option value="User" selected="@(ViewBag.CurrentEntityType == "User")">Пользователь</option>
                     <option value="Approval" selected="@(ViewBag.CurrentEntityType == "Approval")">Согласование</option>
                     <option value="Task" selected="@(ViewBag.CurrentEntityType == "Task")">Задача</option>
+                    <option value="DocumentType" selected="@(ViewBag.CurrentEntityType == "DocumentType")">Тип документа</option>
+                    <option value="Category" selected="@(ViewBag.CurrentEntityType == "Category")">Категория</option>
+                    <option value="DocumentPermission" selected="@(ViewBag.CurrentEntityType == "DocumentPermission")">Права доступа</option>
+                    <option value="Auth" selected="@(ViewBag.CurrentEntityType == "Auth")">Аутентификация</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -39,11 +43,12 @@
             <table class="table table-sm table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Дата/Время</th>
-                        <th>Пользователь</th>
-                        <th>Действие</th>
-                        <th>Тип объекта</th>
-                        <th>ID объекта</th>
+                        <th style="width: 160px;">Дата/Время</th>
+                        <th style="width: 140px;">Пользователь</th>
+                        <th style="width: 220px;">Действие</th>
+                        <th style="width: 120px;">Тип объекта</th>
+                        <th style="width: 110px;">ID объекта</th>
+                        <th style="width: 40px;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,13 +62,26 @@
                                 <td><span class="badge bg-info">@log.Action</span></td>
                                 <td>@log.EntityType</td>
                                 <td><code>@(log.EntityId?.ToString()[..8] ?? "—")...</code></td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" data-bs-target="#auditDetailModal"
+                                            data-user-name="@log.UserName"
+                                            data-action="@log.Action"
+                                            data-entity-type="@log.EntityType"
+                                            data-entity-id="@(log.EntityId?.ToString() ?? "—")"
+                                            data-old-values="@(log.OldValues ?? "Нет")"
+                                            data-new-values="@(log.NewValues ?? "Нет")"
+                                            data-created-at="@log.CreatedAt.ToString("dd.MM.yyyy HH:mm:ss")">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </td>
                             </tr>
                         }
                     }
                     else
                     {
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 <i class="bi bi-inbox"></i> Записей не найдено
                             </td>
                         </tr>
@@ -76,3 +94,69 @@
         Всего записей: @Model.Count
     </div>
 </div>
+
+<!-- Модальное окно с деталями -->
+<div class="modal fade" id="auditDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> Детали записи</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>Дата/Время:</strong> <span id="modalCreatedAt"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>Пользователь:</strong> <span id="modalUserName"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>Действие:</strong> <span id="modalAction" class="badge bg-info"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>Тип объекта:</strong> <span id="modalEntityType"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>ID объекта:</strong> <code id="modalEntityId"></code>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <strong>Старые значения:</strong>
+                    <pre id="modalOldValues" class="bg-light p-2 mt-1" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"></pre>
+                </div>
+                <div class="mb-3">
+                    <strong>Новые значения:</strong>
+                    <pre id="modalNewValues" class="bg-light p-2 mt-1" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('auditDetailModal').addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var createdAt = button.getAttribute('data-created-at');
+    var userName = button.getAttribute('data-user-name');
+    var action = button.getAttribute('data-action');
+    var entityType = button.getAttribute('data-entity-type');
+    var entityId = button.getAttribute('data-entity-id');
+    var oldValues = button.getAttribute('data-old-values');
+    var newValues = button.getAttribute('data-new-values');
+
+    document.getElementById('modalCreatedAt').textContent = createdAt;
+    document.getElementById('modalUserName').textContent = userName;
+    document.getElementById('modalAction').textContent = action;
+    document.getElementById('modalEntityType').textContent = entityType;
+    document.getElementById('modalEntityId').textContent = entityId;
+    document.getElementById('modalOldValues').textContent = oldValues;
+    document.getElementById('modalNewValues').textContent = newValues;
+});
+</script>
+}

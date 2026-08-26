@@ -65,6 +65,8 @@ public record AuditLogDto
     public string Action { get; init; } = string.Empty;
     public string EntityType { get; init; } = string.Empty;
     public Guid? EntityId { get; init; }
+    public string? OldValues { get; init; }
+    public string? NewValues { get; init; }
     public DateTime CreatedAt { get; init; }
 }
 
