@@ -1,17 +1,10 @@
 @model CMDocumentRepository.Application.DTOs.GanttDataDto
 @{
     ViewData["Title"] = "Диаграмма Ганта";
+    var itemsList = Model.Items.OrderBy(i => i.Group).ThenBy(i => i.Start).ToList();
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4><i class="bi bi-bar-chart-steps"></i> Диаграмма Ганта</h4>
-    <div>
-        <span class="badge bg-primary me-1"><i class="bi bi-file-earmark-text"></i> Документы</span>
-        <span class="badge bg-success"><i class="bi bi-check2-square"></i> Задачи</span>
-    </div>
-</div>
-
-@if (!Model.Items.Any())
+@if (!itemsList.Any())
 {
     <div class="alert alert-info">
         <i class="bi bi-info-circle"></i> Нет данных для отображения. Добавьте документы с датами действия (от/до) или задачи с дедлайном.
@@ -19,126 +12,416 @@
 }
 else
 {
-    <div class="card">
-        <div class="card-body p-0" style="overflow-x: auto;">
-            <table class="table table-sm mb-0" style="min-width: 900px;">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 280px;">Название</th>
-                        <th style="width: 90px;">Тип</th>
-                        <th style="width: 100px;">Начало</th>
-                        <th style="width: 100px;">Окончание</th>
-                        <th style="width: 80px;">Статус</th>
-                        <th>Шкала</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @{
-                        var allItems = Model.Items.OrderBy(i => i.Start).ToList();
-                        var minDate = allItems.Min(i => i.Start);
-                        var maxDate = allItems.Max(i => i.End);
-                        var totalDays = Math.Max((maxDate - minDate).Days, 1);
-                    }
-                    @foreach (var item in allItems)
-                    {
-                        var startOffset = Math.Max(0, (item.Start - minDate).TotalDays / totalDays * 100);
-                        var width = Math.Max(2, (item.End - item.Start).TotalDays / totalDays * 100);
-                        var barClass = item.Type == "document" ? "bg-primary" : "bg-success";
-                        var icon = item.Type == "document" ? "bi-file-earmark-text" : "bi-check2-square";
-                        var progressColor = item.Progress >= 100 ? "bg-success" : item.Progress >= 50 ? "bg-warning" : "bg-danger";
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary gantt-zoom" data-zoom="day">Дни</button>
+                    <button type="button" class="btn btn-outline-secondary gantt-zoom active" data-zoom="week">Недели</button>
+                    <button type="button" class="btn btn-outline-primary gantt-zoom" data-zoom="month">Месяцы</button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary gantt-zoom-in" title="Приблизить"><i class="bi bi-zoom-in"></i></button>
+                    <button type="button" class="btn btn-outline-secondary gantt-zoom-out" title="Отдалить"><i class="bi bi-zoom-out"></i></button>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary gantt-today" title="Сегодня"><i class="bi bi-calendar-event"></i> Сегодня</button>
+                <div class="ms-auto d-flex gap-2">
+                    <span class="badge bg-primary"><i class="bi bi-file-earmark-text"></i> Документы</span>
+                    <span class="badge bg-success"><i class="bi bi-check2-square"></i> Задачи</span>
+                    <span class="badge bg-danger">Крит</span>
+                    <span class="badge bg-warning text-dark">Высокий</span>
+                    <span class="badge bg-info">Средний</span>
+                    <span class="badge bg-secondary">Низкий</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-dark gantt-export" title="Экспорт в PNG"><i class="bi bi-download"></i> PNG</button>
+            </div>
+        </div>
+    </div>
 
-                        <tr>
-                            <td>
-                                @if (!string.IsNullOrEmpty(item.Url))
-                                {
-                                    <a href="@item.Url" class="text-decoration-none">
-                                        <i class="bi @icon me-1"></i>@item.Name
-                                    </a>
-                                }
-                                else
-                                {
-                                    <i class="bi @icon me-1"></i>@item.Name
-                                }
-                            </td>
-                            <td>
-                                @if (item.Type == "document")
-                                {
-                                    <span class="badge bg-primary">Документ</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">Задача</span>
-                                }
-                            </td>
-                            <td class="small">@item.Start.ToString("dd.MM.yyyy")</td>
-                            <td class="small">@item.End.ToString("dd.MM.yyyy")</td>
-                            <td><span class="badge @progressColor">@item.Progress%</span></td>
-                            <td style="vertical-align: middle;">
-                                <div style="position: relative; height: 24px; background: #f0f0f0; border-radius: 4px; overflow: hidden;">
-                                    <div class="@barClass" style="position: absolute; left: @startOffset.ToString("F1")%; width: @width.ToString("F1")%; height: 100%; border-radius: 4px; opacity: 0.8;" title="@item.Start.ToString("dd.MM.yyyy") — @item.End.ToString("dd.MM.yyyy")">
-                                        <div class="@progressColor" style="width: @item.Progress%; height: 100%; border-radius: 4px; opacity: 0.5;"></div>
-                                    </div>
+    <div class="card gantt-container" id="ganttChart">
+        <div class="gantt-scroll" id="ganttScroll">
+            <div class="gantt-sidebar" id="ganttSidebar">
+                <div class="gantt-sidebar-header">
+                    <div class="gantt-sidebar-title">Название</div>
+                    <div class="gantt-sidebar-info">Приоритет</div>
+                </div>
+                <div class="gantt-sidebar-body" id="ganttSidebarBody">
+                    @foreach (var group in itemsList.Select(i => i.Group).Where(g => !string.IsNullOrEmpty(g)).Distinct())
+                    {
+                        <div class="gantt-group-header"><i class="bi bi-folder2-open"></i> @group</div>
+                        @foreach (var item in itemsList.Where(i => i.Group == group))
+                        {
+                            var icon = item.Type == "document" ? "bi-file-earmark-text" : "bi-check2-square";
+                            var statusBadge = item.Type == "document"
+                                ? GetDocumentStatusBadge(item.Status)
+                                : GetTaskStatusBadge(item.Status);
+                            var priorityBadge = GetPriorityBadge(item.Priority);
+                            <div class="gantt-row-item" data-id="@item.Id" data-type="@item.Type"
+                                 data-start="@item.Start.ToString("yyyy-MM-dd")"
+                                 data-end="@item.End.ToString("yyyy-MM-dd")"
+                                 data-progress="@item.Progress"
+                                 data-name="@item.Name"
+                                 data-assignee="@(item.AssigneeName ?? "—")"
+                                 data-description="@(item.Description ?? "")"
+                                 data-color="@item.Color"
+                                 data-url="@item.Url">
+                                <div class="gantt-row-name">
+                                    <i class="bi @icon me-1"></i>
+                                    <span class="text-truncate">@item.Name</span>
                                 </div>
-                            </td>
-                        </tr>
+                                <div class="gantt-row-meta">
+                                    <span class="gantt-row-priority">@priorityBadge</span>
+                                    <span class="gantt-row-progress">@item.Progress%</span>
+                                    <span class="gantt-row-status">@statusBadge</span>
+                                </div>
+                            </div>
+                        }
                     }
-                </tbody>
-            </table>
-        </div>
-    </div>
+                </div>
+            </div>
 
-    <div class="card mt-3">
-        <div class="card-header"><i class="bi bi-calendar3"></i> Временная шкала</div>
-        <div class="card-body p-0" style="overflow-x: auto;">
-            <div style="position: relative; min-width: 900px; padding: 10px 0;">
-                @{
-                    var current = new DateTime(minDate.Year, minDate.Month, 1);
-                    var endMonth = new DateTime(maxDate.Year, maxDate.Month, 1).AddMonths(1);
-                }
-                <div class="d-flex border-bottom pb-1 mb-2" style="position: relative; height: 30px;">
-                    @while (current < endMonth)
+            <div class="gantt-timeline-wrapper" id="ganttTimelineWrapper">
+                <div class="gantt-timeline" id="ganttTimeline"></div>
+                <svg id="ganttArrows" class="gantt-arrows"></svg>
+                <div class="gantt-timeline-body" id="ganttTimelineBody">
+                    @foreach (var group in itemsList.Select(i => i.Group).Where(g => !string.IsNullOrEmpty(g)).Distinct())
                     {
-                        var monthOffset = (current - minDate).TotalDays / totalDays * 100;
-                        var nextMonth = current.AddMonths(1);
-                        var monthWidth = (nextMonth - current).TotalDays / totalDays * 100;
-                        <div style="position: absolute; left: @monthOffset.ToString("F1")%; width: @monthWidth.ToString("F1")%; font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden;">
-                            @current.ToString("MMM yyyy")
-                        </div>
-                        current = nextMonth;
+                        <div class="gantt-group-row gantt-group-timeline-header"><i class="bi bi-folder2-open"></i> @group</div>
+                        @foreach (var item in itemsList.Where(i => i.Group == group))
+                        {
+                            <div class="gantt-row-timeline" data-id="@item.Id">
+                                <div class="gantt-bar" data-item-id="@item.Id" style="background-color: @item.Color;">
+                                    <div class="gantt-bar-progress" style="width: @item.Progress%; background-color: rgba(255,255,255,0.3);"></div>
+                                    <span class="gantt-bar-label">@item.Name</span>
+                                </div>
+                            </div>
+                        }
                     }
                 </div>
+                <div class="gantt-today-line" id="ganttTodayLine" style="display: none;">
+                    <div class="gantt-today-label">Сегодня</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                @foreach (var item in allItems)
-                {
-                    var startOffset = Math.Max(0, (item.Start - minDate).TotalDays / totalDays * 100);
-                    var width = Math.Max(1, (item.End - item.Start).TotalDays / totalDays * 100);
-                    var barClass = item.Type == "document" ? "bg-primary" : "bg-success";
-
-                    <div style="position: relative; height: 22px; margin-bottom: 2px;" title="@item.Name: @item.Start.ToString("dd.MM.yyyy") — @item.End.ToString("dd.MM.yyyy")">
-                        <div class="@barClass" style="position: absolute; left: @startOffset.ToString("F1")%; width: @width.ToString("F1")%; height: 16px; border-radius: 3px; opacity: 0.8; top: 3px; min-width: 4px;">
+    <div class="modal fade" id="ganttDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ganttModalTitle">Детали</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Название:</strong> <span id="ganttModalName"></span></p>
+                    <p><strong>Тип:</strong> <span id="ganttModalType"></span></p>
+                    <p><strong>Период:</strong> <span id="ganttModalPeriod"></span></p>
+                    <p><strong>Прогресс:</strong>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" id="ganttModalProgress" role="progressbar"></div>
                         </div>
-                    </div>
-                }
+                    </p>
+                    <p><strong>Исполнитель:</strong> <span id="ganttModalAssignee"></span></p>
+                    <p><strong>Статус:</strong> <span id="ganttModalStatus"></span></p>
+                    <p><strong>Описание:</strong> <span id="ganttModalDesc"></span></p>
+                    <div id="ganttModalActions"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
             </div>
         </div>
     </div>
+}
 
-    <div class="row mt-3">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="text-primary">@Model.Items.Count(i => i.Type == "document")</h5>
-                    <small class="text-muted">Документов на шкале</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="text-success">@Model.Items.Count(i => i.Type == "task")</h5>
-                    <small class="text-muted">Задач на шкале</small>
-                </div>
-            </div>
-        </div>
-    </div>
+<script>
+(function () {
+    var items = @Html.Raw(Json.Serialize(itemsList));
+    var dependencies = @Html.Raw(Json.Serialize(Model.Dependencies));
+    var todayDate = new Date('@Model.TodayDate.ToString("yyyy-MM-dd")');
+    var zoomLevel = 'month';
+    var dayWidth = 40;
+
+    function formatDate(d) {
+        var dd = String(d.getDate()).padStart(2, '0');
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        return dd + '.' + mm + '.' + d.getFullYear();
+    }
+
+    function getMonthName(m) {
+        var names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+        return names[m];
+    }
+
+    function getWeekNumber(d) {
+        var date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        var week1 = new Date(date.getFullYear(), 0, 4);
+        return 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    }
+
+    function buildTimeline() {
+        if (items.length === 0) return;
+
+        var allDates = [];
+        items.forEach(function (i) { allDates.push(new Date(i.Start).getTime()); allDates.push(new Date(i.End).getTime()); });
+        var minDate = new Date(Math.min.apply(null, allDates));
+        var maxDate = new Date(Math.max.apply(null, allDates));
+        minDate.setDate(minDate.getDate() - 7);
+        maxDate.setDate(maxDate.getDate() + 7);
+
+        var totalDays = Math.max((maxDate - minDate) / (1000 * 60 * 60 * 24), 1);
+        var totalWidth = totalDays * dayWidth;
+
+        var timeline = document.getElementById('ganttTimeline');
+        var timelineBody = document.getElementById('ganttTimelineBody');
+        var todayLine = document.getElementById('ganttTodayLine');
+
+        timeline.style.width = totalWidth + 'px';
+        timelineBody.style.width = totalWidth + 'px';
+
+        var headerHTML = '';
+        var current = new Date(minDate);
+
+        if (zoomLevel === 'day') {
+            for (var i = 0; i < totalDays && i < 90; i++) {
+                var d = new Date(current);
+                var dow = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][d.getDay()];
+                headerHTML += '<div class="gantt-day-header" style="width:' + dayWidth + 'px;"><div>' + d.getDate() + '</div><small>' + dow + '</small></div>';
+                current.setDate(current.getDate() + 1);
+            }
+        } else if (zoomLevel === 'week') {
+            while (current <= maxDate) {
+                var ws = new Date(current);
+                var we = new Date(current);
+                we.setDate(we.getDate() + 6);
+                var wd = Math.min(7, Math.ceil((maxDate - current) / 86400000) + 1);
+                headerHTML += '<div class="gantt-week-header" style="width:' + (wd * dayWidth) + 'px;"><div>Нед ' + getWeekNumber(current) + '</div><small>' + formatDate(current) + ' — ' + formatDate(we) + '</small></div>';
+                current.setDate(current.getDate() + 7);
+            }
+        } else {
+            while (current <= maxDate) {
+                var me = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+                var ae = me > maxDate ? maxDate : me;
+                var ds = Math.ceil((ae - current) / 86400000) + 1;
+                headerHTML += '<div class="gantt-month-header" style="width:' + (ds * dayWidth) + 'px;"><div>' + getMonthName(current.getMonth()) + ' ' + current.getFullYear() + '</div></div>';
+                current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+            }
+        }
+
+        timeline.innerHTML = '<div class="gantt-timeline-header">' + headerHTML + '</div>';
+
+        renderGrid(timelineBody, minDate, totalDays);
+        positionBars(items, minDate, totalDays);
+        renderArrows();
+
+        var todayOffset = (todayDate - minDate) / 86400000 * dayWidth;
+        if (todayDate >= minDate && todayDate <= maxDate) {
+            todayLine.style.display = 'block';
+            todayLine.style.left = todayOffset + 'px';
+        } else {
+            todayLine.style.display = 'none';
+        }
+    }
+
+    function renderGrid(container, minDate, totalDays) {
+        container.querySelectorAll('.gantt-grid-line').forEach(function (el) { el.remove(); });
+        var gridLayer = document.createElement('div');
+        gridLayer.style.cssText = 'position:absolute;top:0;left:0;width:' + (totalDays * dayWidth) + 'px;height:100%;pointer-events:none;z-index:0;';
+        for (var i = 0; i < totalDays; i++) {
+            var d = new Date(minDate);
+            d.setDate(d.getDate() + i);
+            var isWknd = d.getDay() === 0 || d.getDay() === 6;
+            var isToday = d.toDateString() === todayDate.toDateString();
+            var line = document.createElement('div');
+            line.style.cssText = 'position:absolute;left:' + (i * dayWidth) + 'px;top:0;width:' + dayWidth + 'px;height:100%;';
+            if (isToday) line.style.backgroundColor = 'rgba(59, 130, 246, 0.08)';
+            else if (isWknd) line.style.backgroundColor = 'rgba(0,0,0,0.02)';
+            gridLayer.appendChild(line);
+        }
+        container.style.position = 'relative';
+        container.appendChild(gridLayer);
+    }
+
+    function positionBars(items, minDate, totalDays) {
+        items.forEach(function (item) {
+            var bar = document.querySelector('.gantt-bar[data-item-id="' + item.Id + '"]');
+            if (!bar) return;
+            var startOffset = (new Date(item.Start) - minDate) / 86400000;
+            var duration = (new Date(item.End) - new Date(item.Start)) / 86400000;
+            bar.style.left = (startOffset * dayWidth) + 'px';
+            bar.style.width = Math.max(duration * dayWidth, 4) + 'px';
+            bar.style.display = 'block';
+        });
+    }
+
+    function renderArrows() {
+        var svg = document.getElementById('ganttArrows');
+        svg.innerHTML = '';
+        var timelineBody = document.getElementById('ganttTimelineBody');
+        var tRect = timelineBody.getBoundingClientRect();
+
+        dependencies.forEach(function (dep) {
+            var fromBar = document.querySelector('.gantt-bar[data-item-id="' + dep.FromId + '"]');
+            var toBar = document.querySelector('.gantt-bar[data-item-id="' + dep.ToId + '"]');
+            if (!fromBar || !toBar) return;
+            var fr = fromBar.getBoundingClientRect();
+            var tr = toBar.getBoundingClientRect();
+            var x1 = fr.right - tRect.left + timelineBody.scrollLeft;
+            var y1 = fr.top + fr.height / 2 - tRect.top + timelineBody.scrollTop;
+            var x2 = tr.left - tRect.left + timelineBody.scrollLeft;
+            var y2 = tr.top + tr.height / 2 - tRect.top + timelineBody.scrollTop;
+            var midX = x1 + Math.max(x2 - x1, 30);
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' C ' + midX + ' ' + y1 + ', ' + midX + ' ' + y2 + ', ' + x2 + ' ' + y2);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', '#9ca3af');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('marker-end', 'url(#arrowhead)');
+            svg.appendChild(path);
+        });
+
+        if (!svg.querySelector('#arrowhead')) {
+            var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            defs.innerHTML = '<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#9ca3af"/></marker>';
+            svg.appendChild(defs);
+        }
+    }
+
+    function showItemDetail(bar) {
+        var id = bar.dataset.itemId;
+        var item = items.find(function (i) { return i.Id.toString() === id; });
+        if (!item) return;
+
+        document.getElementById('ganttModalTitle').textContent = item.Name;
+        document.getElementById('ganttModalName').textContent = item.Name;
+        document.getElementById('ganttModalType').textContent = item.Type === 'document' ? 'Документ' : 'Задача';
+        document.getElementById('ganttModalPeriod').textContent = formatDate(item.Start) + ' — ' + formatDate(item.End);
+        document.getElementById('ganttModalAssignee').textContent = item.AssigneeName || '—';
+        document.getElementById('ganttModalDesc').textContent = item.Description || 'Нет описания';
+
+        var progress = document.getElementById('ganttModalProgress');
+        progress.style.width = item.Progress + '%';
+        progress.className = 'progress-bar ' + (item.Progress >= 100 ? 'bg-success' : item.Progress >= 50 ? 'bg-warning' : 'bg-danger');
+
+        var statusSpan = document.getElementById('ganttModalStatus');
+        if (item.Type === 'document') {
+            var sm = { 'Draft': 'Черновик', 'PendingApproval': 'На согласовании', 'Approved': 'Согласован', 'Rejected': 'Отклонён', 'Rework': 'На доработке', 'Active': 'Действует', 'Archived': 'Архив' };
+            statusSpan.innerHTML = '<span class="badge bg-secondary">' + (sm[item.Status] || item.Status) + '</span>';
+        } else {
+            var sm2 = { 'Backlog': 'Бэклог', 'InProgress': 'В работе', 'Review': 'На проверке', 'Done': 'Завершена' };
+            statusSpan.innerHTML = '<span class="badge bg-primary">' + (sm2[item.Status] || item.Status) + '</span>';
+        }
+
+        document.getElementById('ganttModalActions').innerHTML = item.Url
+            ? '<a href="' + item.Url + '" class="btn btn-sm btn-primary"><i class="bi bi-box-arrow-up-right"></i> Перейти</a>'
+            : '';
+
+        new bootstrap.Modal(document.getElementById('ganttDetailModal')).show();
+    }
+
+    function exportToPNG() {
+        if (typeof html2canvas !== 'undefined') {
+            html2canvas(document.getElementById('ganttChart'), { backgroundColor: '#ffffff', scale: 2 }).then(function (canvas) {
+                var link = document.createElement('a');
+                link.download = 'gantt_chart.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        } else {
+            alert('Для экспорта в PNG подключите библиотеку html2canvas.');
+        }
+    }
+
+    function init() {
+        buildTimeline();
+
+        document.querySelectorAll('.gantt-bar').forEach(function (bar) {
+            bar.style.cursor = 'pointer';
+            bar.style.transition = 'transform 0.15s, box-shadow 0.15s';
+            bar.addEventListener('mouseenter', function () {
+                bar.style.transform = 'translateY(-50%) scaleY(1.15)';
+                bar.style.boxShadow = '0 4px 12px rgba(0,0,0,0.25)';
+            });
+            bar.addEventListener('mouseleave', function () {
+                bar.style.transform = 'translateY(-50%) scaleY(1)';
+                bar.style.boxShadow = 'none';
+            });
+            bar.addEventListener('click', function () { showItemDetail(bar); });
+        });
+
+        document.querySelectorAll('.gantt-zoom[data-zoom]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.gantt-zoom[data-zoom]').forEach(function (b) { b.classList.remove('active', 'btn-outline-primary'); });
+                btn.classList.add('active', 'btn-outline-primary');
+                zoomLevel = btn.dataset.zoom;
+                dayWidth = zoomLevel === 'day' ? 60 : zoomLevel === 'week' ? 40 : 25;
+                buildTimeline();
+            });
+        });
+
+        var zoomInBtn = document.querySelector('.gantt-zoom-in');
+        if (zoomInBtn) zoomInBtn.addEventListener('click', function () { dayWidth = Math.min(dayWidth + 10, 120); buildTimeline(); });
+        var zoomOutBtn = document.querySelector('.gantt-zoom-out');
+        if (zoomOutBtn) zoomOutBtn.addEventListener('click', function () { dayWidth = Math.max(dayWidth - 10, 10); buildTimeline(); });
+
+        var todayBtn = document.querySelector('.gantt-today');
+        if (todayBtn) todayBtn.addEventListener('click', function () {
+            var tb = document.getElementById('ganttTimelineBody');
+            var allDates = [];
+            items.forEach(function (i) { allDates.push(new Date(i.Start).getTime()); allDates.push(new Date(i.End).getTime()); });
+            var md = new Date(Math.min.apply(null, allDates));
+            md.setDate(md.getDate() - 7);
+            var offset = (todayDate - md) / 86400000 * dayWidth - tb.clientWidth / 2;
+            tb.scrollLeft = Math.max(0, offset);
+        });
+
+        var exportBtn = document.querySelector('.gantt-export');
+        if (exportBtn) exportBtn.addEventListener('click', exportToPNG);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+
+@functions {
+    string GetDocumentStatusBadge(string? status) {
+        if (string.IsNullOrEmpty(status)) return "";
+        switch (status) {
+            case "Draft": return "<span class=\"badge bg-secondary\">Черновик</span>";
+            case "PendingApproval": return "<span class=\"badge bg-warning text-dark\">На согласовании</span>";
+            case "Approved": return "<span class=\"badge bg-success\">Согласован</span>";
+            case "Rejected": return "<span class=\"badge bg-danger\">Отклонён</span>";
+            case "Active": return "<span class=\"badge bg-primary\">Действует</span>";
+            case "Archived": return "<span class=\"badge bg-dark\">Архив</span>";
+            default: return "<span class=\"badge bg-secondary\">" + status + "</span>";
+        }
+    }
+
+    string GetTaskStatusBadge(string? status) {
+        if (string.IsNullOrEmpty(status)) return "";
+        switch (status) {
+            case "Backlog": return "<span class=\"badge bg-secondary\">Бэклог</span>";
+            case "InProgress": return "<span class=\"badge bg-info\">В работе</span>";
+            case "Review": return "<span class=\"badge bg-warning text-dark\">На проверке</span>";
+            case "Done": return "<span class=\"badge bg-success\">Завершена</span>";
+            default: return "<span class=\"badge bg-secondary\">" + status + "</span>";
+        }
+    }
+
+    string GetPriorityBadge(string? priority) {
+        if (string.IsNullOrEmpty(priority)) return "";
+        switch (priority) {
+            case "Critical": return "<span class=\"badge bg-danger\">!</span>";
+            case "High": return "<span class=\"badge bg-warning text-dark\">▲</span>";
+            case "Medium": return "<span class=\"badge bg-info\">●</span>";
+            case "Low": return "<span class=\"badge bg-secondary\">○</span>";
+            default: return "";
+        }
+    }
 }
