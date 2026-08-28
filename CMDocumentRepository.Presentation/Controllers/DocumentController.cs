@@ -82,6 +82,26 @@ public class DocumentController : Controller
         var versions = await _mediator.Send(new GetDocumentVersionsQuery { DocumentId = id });
         ViewBag.Versions = versions;
 
+        var approvers = await _mediator.Send(new GetAvailableApproversQuery());
+        ViewBag.Approvers = approvers;
+
+        // Проверяем, является ли текущий пользователь согласующим
+        var userId = GetUserId();
+        bool isApprover = false;
+        Guid? approvalId = null;
+        if (userId.HasValue && document.Status == DocumentStatus.PendingApproval)
+        {
+            var approvals = await _mediator.Send(new GetApprovalsByDocumentQuery { DocumentId = id });
+            var pendingApproval = approvals.FirstOrDefault(a => a.ApproverId == userId.Value && a.Status == ApprovalStatus.Pending);
+            if (pendingApproval != null)
+            {
+                isApprover = true;
+                approvalId = pendingApproval.Id;
+            }
+        }
+        ViewBag.IsApprover = isApprover;
+        ViewBag.ApprovalId = approvalId;
+
         return View(document);
     }
 

@@ -1,4 +1,8 @@
 @model CMDocumentRepository.Application.DTOs.DocumentDto
+@{
+    var isApprover = ViewBag.IsApprover as bool? ?? false;
+    var approvalId = ViewBag.ApprovalId as Guid?;
+}
 
 @{
     ViewData["Title"] = $"Документ {Model.DocumentNumber}";
@@ -7,24 +11,27 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4>@Model.Title</h4>
     <div>
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
-            <i class="bi bi-pencil"></i> Редактировать
-        </a>
-        @if (!Model.IsDeleted)
+        @if (!isApprover)
         {
-            <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Переместить в корзину?')">
-                    <i class="bi bi-trash"></i> Удалить
-                </button>
-            </form>
-        }
-        else
-        {
-            <form asp-action="Restore" asp-route-id="@Model.Id" method="post" class="d-inline">
-                <button type="submit" class="btn btn-outline-success">
-                    <i class="bi bi-arrow-counterclockwise"></i> Восстановить
-                </button>
-            </form>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                <i class="bi bi-pencil"></i> Редактировать
+            </a>
+            @if (!Model.IsDeleted)
+            {
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Переместить в корзину?')">
+                        <i class="bi bi-trash"></i> Удалить
+                    </button>
+                </form>
+            }
+            else
+            {
+                <form asp-action="Restore" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-outline-success">
+                        <i class="bi bi-arrow-counterclockwise"></i> Восстановить
+                    </button>
+                </form>
+            }
         }
     </div>
 </div>
@@ -186,20 +193,122 @@
                 @if (Model.Status == CMDocumentRepository.Domain.Enums.DocumentStatus.Draft ||
                       Model.Status == CMDocumentRepository.Domain.Enums.DocumentStatus.Rework)
                 {
-                    <form asp-controller="Approval" asp-action="SendForApproval" method="post">
-                        <input type="hidden" name="documentId" value="@Model.Id" />
-                        <div class="mb-2">
-                            <label class="form-label small">Согласующие:</label>
-                            <select name="approverIds" class="form-select form-select-sm" multiple>
-                                <option value="">Выберите согласующих</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-warning w-100">
-                            <i class="bi bi-send"></i> Отправить на согласование
-                        </button>
-                    </form>
+                    <button type="button" class="btn btn-warning w-100 mb-2" data-bs-toggle="modal" data-bs-target="#approvalModal">
+                        <i class="bi bi-send"></i> Отправить на согласование
+                    </button>
+                }
+                @if (Model.Status == CMDocumentRepository.Domain.Enums.DocumentStatus.PendingApproval && isApprover && approvalId.HasValue)
+                {
+                    <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#approveModal">
+                        <i class="bi bi-check-circle"></i> Согласовать
+                    </button>
+                    <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="bi bi-x-circle"></i> Отклонить
+                    </button>
                 }
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно выбора согласующих -->
+<div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approvalModalLabel">
+                    <i class="bi bi-send-check me-2"></i>Отправить на согласование
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Approval" asp-action="SendForApproval" method="post">
+                <input type="hidden" name="documentId" value="@Model.Id" />
+                <div class="modal-body">
+                    <p class="text-muted small">Выберите пользователей, которые должны согласовать документ:</p>
+                    <div class="mb-3">
+                        <label class="form-label">Согласующие:</label>
+                        <select name="approverIds" class="form-select" multiple size="8">
+                            @if (ViewBag.Approvers != null)
+                            {
+                                foreach (var approver in (List<CMDocumentRepository.Application.DTOs.UserDto>)ViewBag.Approvers)
+                                {
+                                    <option value="@approver.Id">
+                                        @approver.LastName @approver.FirstName @approver.MiddleName (@approver.UserName)
+                                    </option>
+                                }
+                            }
+                        </select>
+                        <small class="text-muted">Удерживайте Ctrl для выбора нескольких</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-send me-1"></i>Отправить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно согласования -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approveModalLabel">
+                    <i class="bi bi-check-circle me-2"></i>Согласовать документ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Approval" asp-action="Approve" method="post">
+                <input type="hidden" name="approvalId" value="@approvalId" />
+                <div class="modal-body">
+                    <p class="text-muted small">Подтвердите согласование документа.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий (необязательно):</label>
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Введите комментарий..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check me-1"></i>Согласовать
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно отклонения -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rejectModalLabel">
+                    <i class="bi bi-x-circle me-2"></i>Отклонить документ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Approval" asp-action="Reject" method="post">
+                <input type="hidden" name="approvalId" value="@approvalId" />
+                <div class="modal-body">
+                    <p class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Обязательно укажите причину отклонения:</p>
+                    <div class="mb-3">
+                        <label class="form-label">Причина отклонения *</label>
+                        <textarea name="comment" class="form-control" rows="3" required placeholder="Укажите причину отклонения..."></textarea>
+                        <div class="invalid-feedback">Пожалуйста, укажите причину отклонения.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x me-1"></i>Отклонить
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

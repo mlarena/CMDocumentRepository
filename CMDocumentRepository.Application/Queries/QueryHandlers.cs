@@ -369,8 +369,37 @@ public class GetDocumentByNumberQueryHandler : IRequestHandler<GetDocumentByNumb
                  ? $"{user.LastName} {user.FirstName}"
                  : string.Empty
          }).ToList();
-     }
- }
+    }
+}
+
+public class GetAvailableApproversQueryHandler : IRequestHandler<GetAvailableApproversQuery, List<UserDto>>
+{
+    private readonly IUserRepository _userRepository;
+
+    public GetAvailableApproversQueryHandler(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async Task<List<UserDto>> Handle(GetAvailableApproversQuery request, CancellationToken cancellationToken)
+    {
+        var users = await _userRepository.GetAllAsync();
+        return users
+            .Where(u => u.IsActive && u.Role != Domain.Enums.UserRole.SuperAdmin)
+            .Select(u => new UserDto
+            {
+                Id = u.Id,
+                UserName = u.UserName,
+                Email = u.Email,
+                FirstName = u.FirstName,
+                LastName = u.LastName,
+                MiddleName = u.MiddleName,
+                Role = u.Role,
+                IsActive = u.IsActive
+            })
+            .ToList();
+    }
+}
 
 public class GetMyDocumentsQueryHandler : IRequestHandler<GetMyDocumentsQuery, List<DocumentDto>>
 {

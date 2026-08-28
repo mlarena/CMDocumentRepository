@@ -17,3 +17,7 @@ public record GetMyApprovalsQuery : IRequest<List<ApprovalDto>>
 {
     public Guid ApproverId { get; init; }
 }
+
+public record GetAvailableApproversQuery : IRequest<List<UserDto>>
+{
+}

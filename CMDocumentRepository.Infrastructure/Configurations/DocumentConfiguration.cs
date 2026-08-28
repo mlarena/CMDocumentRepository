@@ -43,6 +43,9 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(d => d.Metadata)
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => v == null ? null : JsonSerializer.Serialize(v),
+                v => v == null ? null : JsonDocument.Parse(v));
     }
 }

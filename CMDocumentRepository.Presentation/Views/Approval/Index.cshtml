@@ -51,24 +51,9 @@
                         </td>
                         <td>@approval.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
                         <td>
-                            @if (approval.Status == ApprovalStatus.Pending)
-                            {
-                                <div class="btn-group btn-group-sm">
-                                    <form asp-action="Approve" method="post" class="d-inline">
-                                        <input type="hidden" name="approvalId" value="@approval.Id" />
-                                        <button type="submit" class="btn btn-success btn-sm">
-                                            <i class="bi bi-check"></i>
-                                        </button>
-                                    </form>
-                                    <form asp-action="Reject" method="post" class="d-inline">
-                                        <input type="hidden" name="approvalId" value="@approval.Id" />
-                                        <input type="hidden" name="comment" value="Отклонено" />
-                                        <button type="submit" class="btn btn-danger btn-sm">
-                                            <i class="bi bi-x"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            }
+                            <a asp-controller="Document" asp-action="Details" asp-route-id="@approval.DocumentId" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Просмотр
+                            </a>
                         </td>
                     </tr>
                 }

@@ -132,36 +132,33 @@ public class ApproveDocumentCommandHandler : IRequestHandler<ApproveDocumentComm
 
 public class RejectDocumentCommandHandler : IRequestHandler<RejectDocumentCommand, bool>
 {
-    private readonly IDocumentRepository _documentRepository;
     private readonly IApprovalRepository _approvalRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly IEmailService _emailService;
+    private readonly IDocumentRepository _documentRepository;
+    private readonly IDocumentVersionRepository _versionRepository;
 
     public RejectDocumentCommandHandler(
-        IDocumentRepository documentRepository,
         IApprovalRepository approvalRepository,
-        IUserRepository userRepository,
-        IEmailService emailService)
+        IDocumentRepository documentRepository,
+        IDocumentVersionRepository versionRepository)
     {
-        _documentRepository = documentRepository;
         _approvalRepository = approvalRepository;
-        _userRepository = userRepository;
-        _emailService = emailService;
+        _documentRepository = documentRepository;
+        _versionRepository = versionRepository;
     }
 
     public async Task<bool> Handle(RejectDocumentCommand request, CancellationToken cancellationToken)
     {
-        var approval = await _approvalRepository.GetByIdAsync(request.ApprovalId)
-            ?? throw new KeyNotFoundException("Запись согласования не найдена");
+        if (string.IsNullOrWhiteSpace(request.Comment))
+            throw new ArgumentException("Причина отклонения обязательна для заполнения");
 
-        if (approval.ApproverId != request.ApproverId)
-            throw new UnauthorizedAccessException("Вы не являетесь согласующим для этого документа");
+        var approval = await _approvalRepository.GetByIdAsync(request.ApprovalId);
+        if (approval == null)
+            throw new KeyNotFoundException("Запись согласования не найдена");
 
         if (approval.Status != ApprovalStatus.Pending)
-            throw new InvalidOperationException("Этот документ уже согласован или отклонён");
+            throw new InvalidOperationException("Документ уже обработан");
 
         approval.Status = ApprovalStatus.Rejected;
-        approval.Comment = request.Comment;
         approval.ApprovedAt = DateTime.UtcNow;
         await _approvalRepository.UpdateAsync(approval);
 
@@ -170,17 +167,6 @@ public class RejectDocumentCommandHandler : IRequestHandler<RejectDocumentComman
         {
             document.Status = DocumentStatus.Rejected;
             await _documentRepository.UpdateAsync(document);
-
-            var creator = await _userRepository.GetByIdAsync(document.CreatedBy);
-            if (creator != null)
-            {
-                await _emailService.SendApprovalResultAsync(
-                    creator.Email,
-                    document.DocumentNumber,
-                    document.Title,
-                    "Отклонён",
-                    request.Comment);
-            }
         }
 
         return true;
