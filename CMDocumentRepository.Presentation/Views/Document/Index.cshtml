@@ -91,6 +91,7 @@
                     <th>Категория</th>
                     <th>Версия</th>
                     <th>Статус</th>
+                    <th>Срок действия</th>
                     <th>Дата</th>
                     <th></th>
                 </tr>
@@ -128,6 +129,44 @@
                                 case DocumentStatus.Archived:
                                     <span class="badge bg-dark">Архив</span>
                                     break;
+                            }
+                        </td>
+                        <td>
+                            @if (doc.ValidFrom.HasValue || doc.ValidUntil.HasValue)
+                            {
+                                <div>
+                                    @if (doc.ValidFrom.HasValue)
+                                    {
+                                        <small class="text-muted">С:</small> @doc.ValidFrom.Value.ToString("dd.MM.yyyy")
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">С:</small> <span>-</span>
+                                    }
+                                    <br />
+                                    @if (doc.ValidUntil.HasValue)
+                                    {
+                                        <small class="text-muted">По:</small> @doc.ValidUntil.Value.ToString("dd.MM.yyyy")
+                                        @if (doc.ValidUntil.Value.Date < DateTime.Now.Date)
+                                        {
+                                            <br />
+                                            <span class="badge bg-danger">Истёк</span>
+                                        }
+                                        else if (doc.ValidUntil.Value.Date <= DateTime.Now.Date.AddDays(30))
+                                        {
+                                            <br />
+                                            <span class="badge bg-warning text-dark">Скоро истечёт</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">По:</small> <span>-</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
                             }
                         </td>
                         <td>@doc.CreatedAt.ToString("dd.MM.yyyy")</td>

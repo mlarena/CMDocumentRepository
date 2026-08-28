@@ -1,148 +1,974 @@
 @model CMDocumentRepository.Application.DTOs.GanttDataDto
 @{
-    ViewData["Title"] = "Диаграмма Ганта";
+    ViewData["Title"] = "Диаграмма Ганта - Сроки действия документов";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4><i class="bi bi-calendar-week me-2"></i>Диаграмма Ганта</h4>
-</div>
+<style>
+    /* ===== Основные стили ===== */
+    .gantt-wrapper {
+        position: relative;
+    }
 
-@if (!Model.Items.Any())
-{
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> Нет данных для отображения. Добавьте документы с датами действия (от/до).
+    .gantt-target {
+        position: relative;
+        min-height: 500px;
+        overflow: auto;
+        background: #fff;
+        border-radius: 4px;
+    }
+
+    /* ===== Статистика ===== */
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: default;
+        border: none;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .stat-card .stat-icon {
+        font-size: 28px;
+        opacity: 0.8;
+    }
+
+    .stat-card .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .stat-card .stat-label {
+        font-size: 13px;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+
+    /* ===== Управление ===== */
+    .gantt-controls .btn-group .btn {
+        font-size: 13px;
+    }
+
+    .gantt-controls .btn-group .btn i {
+        margin-right: 4px;
+    }
+
+    /* ===== Кастомный popup для документов ===== */
+    .gantt-popup {
+        min-width: 280px;
+        max-width: 350px;
+        padding: 8px 0;
+    }
+
+    .gantt-popup .doc-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #0d6efd;
+        margin-bottom: 8px;
+        word-break: break-word;
+    }
+
+    .gantt-popup .doc-meta {
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+
+    .gantt-popup .doc-meta strong {
+        color: #495057;
+    }
+
+    .gantt-popup .doc-progress {
+        margin-top: 8px;
+    }
+
+    .gantt-popup .doc-progress .progress {
+        height: 8px;
+        border-radius: 4px;
+    }
+
+    .gantt-popup .doc-actions {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #dee2e6;
+    }
+
+    /* ===== Стилизация диаграммы ===== */
+    .gantt-target .gantt .grid-header {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 2px solid #dee2e6;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-weight: 600;
+    }
+
+    .gantt-target .gantt .row {
+        transition: background-color 0.2s ease;
+        cursor: pointer;
+    }
+
+    .gantt-target .gantt .row:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+
+    .gantt-target .gantt .row:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.015);
+    }
+
+    .gantt-target .gantt .bar {
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .gantt-target .gantt .bar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        z-index: 10;
+    }
+
+    .gantt-target .gantt .bar .bar-progress {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+    }
+
+    .gantt-target .gantt .group-row {
+        background-color: rgba(0, 0, 0, 0.04) !important;
+        font-weight: 700 !important;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .gantt-target .gantt .group-row .gantt-row-label {
+        font-weight: 700 !important;
+        color: #212529;
+    }
+
+    .gantt-target .gantt .today {
+        background-color: rgba(13, 110, 253, 0.08) !important;
+        border-left: 3px solid #0d6efd !important;
+    }
+
+    .gantt-target .gantt .weekend {
+        background-color: rgba(220, 53, 69, 0.04) !important;
+    }
+
+    /* ===== Анимация загрузки ===== */
+    .gantt-target.loading {
+        min-height: 300px;
+    }
+
+    .gantt-target.loading::after {
+        content: '⏳ Загрузка диаграммы...';
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 300px;
+        font-size: 18px;
+        color: #6c757d;
+        background: rgba(255,255,255,0.8);
+    }
+
+    /* ===== Легенда ===== */
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        font-size: 12px;
+        margin-right: 12px;
+    }
+
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        margin-right: 5px;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+
+   
+    /* ===== Темная тема ===== */
+    [data-bs-theme="dark"] .gantt-target {
+        background: #1a1d20;
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .grid-header {
+        background: linear-gradient(180deg, #2b3036 0%, #212529 100%);
+        border-bottom-color: #495057;
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .grid-header .grid-row {
+        color: #ced4da;
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .row:hover {
+        background-color: rgba(13, 110, 253, 0.15);
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .row:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .group-row {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border-top-color: #495057;
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .group-row .gantt-row-label {
+        color: #e9ecef;
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .today {
+        background-color: rgba(13, 110, 253, 0.2) !important;
+    }
+
+    [data-bs-theme="dark"] .gantt-target .gantt .weekend {
+        background-color: rgba(220, 53, 69, 0.1) !important;
+    }
+
+    [data-bs-theme="dark"] .gantt-popup .doc-title {
+        color: #6ea8fe;
+    }
+
+    [data-bs-theme="dark"] .gantt-popup .doc-meta strong {
+        color: #ced4da;
+    }
+
+    [data-bs-theme="dark"] .gantt-popup .doc-actions {
+        border-top-color: #495057;
+    }
+</style>
+
+<div class="gantt-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h4>
+            <i class="bi bi-calendar-week me-2"></i>
+            Диаграмма Ганта
+            <small class="text-muted fs-6">— Сроки действия документов</small>
+        </h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="gantt-refresh" title="Обновить диаграмму">
+                <i class="bi bi-arrow-clockwise"></i> Обновить
+            </button>
+            <button class="btn btn-sm btn-outline-success" id="gantt-export" title="Экспортировать в PNG">
+                <i class="bi bi-download"></i> Экспорт
+            </button>
+        </div>
     </div>
-}
-else
-{
-    <!-- Управление масштабом -->
-    <div class="card mb-3">
-        <div class="card-body py-2">
-            <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-outline-secondary gantt-zoom" data-view-mode="Day">Дни</button>
-                    <button type="button" class="btn btn-outline-secondary gantt-zoom active" data-view-mode="Week">Недели</button>
-                    <button type="button" class="btn btn-outline-secondary gantt-zoom" data-view-mode="Month">Месяцы</button>
+
+    @if (!Model.Items.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Нет данных для отображения. Добавьте документы с датами действия (от/до).
+        </div>
+    }
+    else
+    {
+        <!-- ===== СТАТИСТИКА ===== -->
+        var total = Model.Items.Count();
+        var active = Model.Items.Count(x => x.Progress > 0 && x.Progress < 100);
+        var expired = Model.Items.Count(x => x.End < DateTime.Now && x.Progress < 100);
+        var expiringSoon = Model.Items.Count(x => x.End >= DateTime.Now && x.End <= DateTime.Now.AddDays(7) && x.Progress < 100);
+        var completed = Model.Items.Count(x => x.Progress >= 100);
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-2">
+                <div class="card stat-card bg-primary text-white">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="stat-label">Всего</p>
+                                <p class="stat-number">@total</p>
+                            </div>
+                            <i class="bi bi-list-task stat-icon"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="ms-auto d-flex gap-2">
-                    <span class="badge bg-danger">Крит</span>
-                    <span class="badge bg-warning text-dark">Высокий</span>
-                    <span class="badge bg-info">Средний</span>
-                    <span class="badge bg-secondary">Низкий</span>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="card stat-card bg-success text-white">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="stat-label">Завершено</p>
+                                <p class="stat-number">@completed</p>
+                            </div>
+                            <i class="bi bi-check-circle stat-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="card stat-card bg-warning text-dark">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="stat-label">В работе</p>
+                                <p class="stat-number">@active</p>
+                            </div>
+                            <i class="bi bi-clock-history stat-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card bg-info text-white">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="stat-label">Истекают (7 дней)</p>
+                                <p class="stat-number">@expiringSoon</p>
+                            </div>
+                            <i class="bi bi-hourglass-split stat-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card bg-danger text-white">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <p class="stat-label">Просрочено</p>
+                                <p class="stat-number">@expired</p>
+                            </div>
+                            <i class="bi bi-exclamation-triangle stat-icon"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Контейнер для Gantt -->
-    <div class="card">
-        <div class="card-body">
-            <div class="gantt-target"></div>
+        <!-- ===== УПРАВЛЕНИЕ ===== -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3 align-items-center gantt-controls">
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small text-muted">Масштаб</label>
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                            <button type="button" class="btn btn-outline-secondary gantt-zoom" data-view-mode="Day">
+                                <i class="bi bi-calendar-day"></i> Дни
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary gantt-zoom active" data-view-mode="Week">
+                                <i class="bi bi-calendar-week"></i> Недели
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary gantt-zoom" data-view-mode="Month">
+                                <i class="bi bi-calendar-month"></i> Месяцы
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small text-muted">Поиск</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="gantt-search" 
+                                   placeholder="Название или группа...">
+                            <button class="btn btn-outline-secondary" id="gantt-clear-search" type="button" title="Очистить">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small text-muted">Фильтр</label>
+                        <select class="form-select form-select-sm" id="gantt-filter">
+                            <option value="all">Все документы</option>
+                            <option value="active">В работе</option>
+                            <option value="completed">Завершенные</option>
+                            <option value="expiring">Истекают (7 дней)</option>
+                            <option value="expired">Просроченные</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small text-muted">Действия</label>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary flex-fill" id="gantt-today">
+                                <i class="bi bi-calendar-event"></i> Сегодня
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="gantt-reset" title="Сбросить фильтры">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Легенда -->
+                <div class="mt-3 pt-2 border-top d-flex flex-wrap align-items-center">
+                    <span class="text-muted small me-3">Статус:</span>
+                    <span class="legend-item">
+                        <span class="legend-color" style="background:#28a745;"></span>
+                        Завершено
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-color" style="background:#17a2b8;"></span>
+                        В работе
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-color" style="background:#ffc107;"></span>
+                        Начато
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-color" style="background:#fd7e14;"></span>
+                        Ожидает
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-color" style="background:#dc3545;"></span>
+                        Просрочено
+                    </span>
+                    <span class="ms-auto text-muted small" id="task-counter">
+                        <i class="bi bi-list-ul me-1"></i>
+                        Показано: <span id="visible-count">@total</span> из @total
+                    </span>
+                </div>
+            </div>
         </div>
-    </div>
-}
+
+        <!-- ===== ДИАГРАММА ===== -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="gantt-target p-3"></div>
+            </div>
+        </div>
+    }
+</div>
 
 @section Scripts {
-<script defer>
-(function () {
-    var tasks = @Html.Raw(Json.Serialize(Model.Items.Select(item => new {
-        id = item.Id.ToString(),
-        name = item.Name,
-        start = item.Start.ToString("yyyy-MM-dd"),
-        end = item.End.ToString("yyyy-MM-dd"),
-        progress = item.Progress,
-        color = item.Color,
-        group = item.Group
-    })));
+    <script defer>
+        (function () {
+            'use strict';
 
-    console.log('Tasks loaded:', tasks);
-    console.log('Gantt object:', typeof Gantt);
-    console.log('jQuery loaded:', typeof jQuery);
+            // ========================================
+            // ДАННЫЕ
+            // ========================================
+            var tasksData = @Html.Raw(Json.Serialize(Model.Items.Select(item => new {
+                id = item.Id.ToString(),
+                name = item.Name,
+                start = item.Start.ToString("yyyy-MM-dd"),
+                end = item.End.ToString("yyyy-MM-dd"),
+                progress = item.Progress,
+                color = item.Color,
+                group = item.Group
+            })));
 
-    $(document).ready(function () {
-        console.log('jQuery ready');
-        console.log('Gantt-target element:', $('.gantt-target').length);
-        
-        if (typeof Gantt === 'undefined') {
-            console.error('Frappe Gantt library not loaded!');
-            $('.gantt-target').html('<div class="alert alert-danger">Ошибка: библиотека Frappe Gantt не загрузилась</div>');
-            return;
-        }
+            // ========================================
+            // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+            // ========================================
+            var ganttInstance = null;
+            var currentViewMode = 'Week';
+            var currentFilter = 'all';
+            var currentSearch = '';
 
-        try {
-            // Функция для получения ширины колонки в зависимости от режима
+            // ========================================
+            // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+            // ========================================
             function getColumnWidth(viewMode) {
-                switch(viewMode) {
-                    case 'Day': return 40;    // Узкие колонки для дней
-                    case 'Week': return 60;   // Средние для недель
-                    case 'Month': return 100; // Широкие для месяцев
-                    default: return 30;
+                switch (viewMode) {
+                    case 'Day': return 50;
+                    case 'Week': return 75;
+                    case 'Month': return 120;
+                    default: return 75;
                 }
             }
 
-            // Функция для получения шага (step) в зависимости от режима
             function getStep(viewMode) {
-                switch(viewMode) {
-                    case 'Day': return 24;    // Часы
-                    case 'Week': return 24;   // Дни
-                    case 'Month': return 7;   // Недели
+                switch (viewMode) {
+                    case 'Day': return 24;
+                    case 'Week': return 24;
+                    case 'Month': return 7;
                     default: return 24;
                 }
             }
 
-            var gantt = new Gantt(".gantt-target", tasks, {
-                header_height: 50,
-                column_width: getColumnWidth('Week'),
-                step: getStep('Week'),
-                view_modes: ['Day', 'Week', 'Month'],
-                bar_height: 25,
-                bar_corner_radius: 3,
-                arrow_curve: 5,
-                padding: 18,
-                view_mode: 'Week',
-                date_format: 'YYYY-MM-DD',
-                custom_popup: false,
-                language: 'ru'
-            });
-            console.log('Gantt initialized successfully');
+            function getStatusColor(progress, endDate) {
+                var today = new Date().toISOString().split('T')[0];
+                
+                if (progress >= 100) return '#28a745'; // Завершено
+                if (endDate < today) return '#dc3545'; // Просрочено
+                if (progress >= 70) return '#17a2b8';  // В работе
+                if (progress >= 40) return '#ffc107';  // Начато
+                if (progress >= 10) return '#fd7e14';  // Ожидает
+                return '#6c757d'; // Не начато
+            }
 
-            // Обработчики кнопок масштаба
-            $('.gantt-zoom').on('click', function () {
-                $('.gantt-zoom').removeClass('active btn-outline-primary').addClass('btn-outline-secondary');
-                $(this).addClass('active btn-outline-primary').removeClass('btn-outline-secondary');
-                var viewMode = $(this).data('view-mode');
+            function getStatusLabel(progress, endDate) {
+                var today = new Date().toISOString().split('T')[0];
                 
-                // Меняем режим просмотра
-                gantt.change_view_mode(viewMode);
+                if (progress >= 100) return 'Завершено';
+                if (endDate < today) return 'Просрочено';
+                if (progress >= 70) return 'В работе';
+                if (progress >= 40) return 'Начато';
+                if (progress >= 10) return 'Ожидает';
+                return 'Не начато';
+            }
+
+            function getStatusBadge(progress, endDate) {
+                var today = new Date().toISOString().split('T')[0];
                 
-                // Меняем ширину колонок (пересоздаем диаграмму)
-                var newWidth = getColumnWidth(viewMode);
-                var newStep = getStep(viewMode);
+                if (progress >= 100) return 'bg-success';
+                if (endDate < today) return 'bg-danger';
+                if (progress >= 70) return 'bg-primary';
+                if (progress >= 40) return 'bg-warning text-dark';
+                if (progress >= 10) return 'bg-info';
+                return 'bg-secondary';
+            }
+
+            // ========================================
+            // УВЕДОМЛЕНИЯ
+            // ========================================
+            function showNotification(message, type = 'info') {
+                var icons = {
+                    success: 'check-circle',
+                    danger: 'exclamation-circle',
+                    warning: 'exclamation-triangle',
+                    info: 'info-circle'
+                };
                 
-                // Пересоздаем диаграмму с новыми параметрами
+                var toastHtml = `
+                    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+                        <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="bi bi-${icons[type] || 'info-circle'} me-2"></i>
+                                    ${message}
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', toastHtml);
+                var toastEl = document.querySelector('.toast');
+                var toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                
+                setTimeout(() => {
+                    var container = document.querySelector('.toast-container');
+                    if (container) container.remove();
+                }, 3500);
+            }
+
+            // ========================================
+            // ФИЛЬТРАЦИЯ И ПОИСК
+            // ========================================
+            function getFilteredTasks() {
+                var filtered = tasksData;
+                var today = new Date().toISOString().split('T')[0];
+                var weekLater = new Date();
+                weekLater.setDate(weekLater.getDate() + 7);
+                var weekLaterStr = weekLater.toISOString().split('T')[0];
+
+                // Фильтр по статусу
+                switch (currentFilter) {
+                    case 'active':
+                        filtered = filtered.filter(t => t.progress > 0 && t.progress < 100);
+                        break;
+                    case 'completed':
+                        filtered = filtered.filter(t => t.progress >= 100);
+                        break;
+                    case 'expiring':
+                        filtered = filtered.filter(t => 
+                            t.end >= today && 
+                            t.end <= weekLaterStr && 
+                            t.progress < 100
+                        );
+                        break;
+                    case 'expired':
+                        filtered = filtered.filter(t => t.end < today && t.progress < 100);
+                        break;
+                    default:
+                        break;
+                }
+
+                // Поиск
+                if (currentSearch.trim()) {
+                    var search = currentSearch.toLowerCase().trim();
+                    filtered = filtered.filter(t => 
+                        t.name.toLowerCase().includes(search) ||
+                        (t.group && t.group.toLowerCase().includes(search))
+                    );
+                }
+
+                return filtered;
+            }
+
+            // ========================================
+            // ИНИЦИАЛИЗАЦИЯ ДИАГРАММЫ
+            // ========================================
+            function initGantt(viewMode) {
                 var container = document.querySelector('.gantt-target');
-                container.innerHTML = '';
-                
-                gantt = new Gantt(".gantt-target", tasks, {
-                    header_height: 50,
-                    column_width: newWidth,
-                    step: newStep,
-                    view_modes: ['Day', 'Week', 'Month'],
-                    bar_height: 25,
-                    bar_corner_radius: 3,
-                    arrow_curve: 5,
-                    padding: 18,
-                    view_mode: viewMode,
-                    date_format: 'YYYY-MM-DD',
-                    custom_popup: false,
-                    language: 'ru'
+                if (!container) return;
+
+                container.classList.add('loading');
+
+                setTimeout(function() {
+                    try {
+                        var filteredTasks = getFilteredTasks();
+
+                        if (filteredTasks.length === 0) {
+                            container.innerHTML = `
+                                <div class="alert alert-info m-3">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Нет документов, соответствующих текущим фильтрам
+                                </div>
+                            `;
+                            container.classList.remove('loading');
+                            document.getElementById('visible-count').textContent = '0';
+                            return;
+                        }
+
+                        // Обогащаем задачи цветами и статусами
+                        var enhancedTasks = filteredTasks.map(task => {
+                            var color = task.color || getStatusColor(task.progress, task.end);
+                            return {
+                                ...task,
+                                color: color,
+                                _status: getStatusLabel(task.progress, task.end)
+                            };
+                        });
+
+                        container.innerHTML = '';
+                        currentViewMode = viewMode || currentViewMode;
+
+                        ganttInstance = new Gantt(".gantt-target", enhancedTasks, {
+                            header_height: 50,
+                            column_width: getColumnWidth(currentViewMode),
+                            step: getStep(currentViewMode),
+                            view_modes: ['Day', 'Week', 'Month'],
+                            bar_height: 28,
+                            bar_corner_radius: 4,
+                            arrow_curve: 5,
+                            padding: 20,
+                            view_mode: currentViewMode,
+                            date_format: 'YYYY-MM-DD',
+                            language: 'ru',
+                            custom_popup: function(task) {
+                                var status = getStatusLabel(task.progress, task.end);
+                                var badge = getStatusBadge(task.progress, task.end);
+                                var today = new Date().toISOString().split('T')[0];
+                                var isExpired = task.end < today && task.progress < 100;
+                                var isExpiring = task.end >= today && task.end <= new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
+                                
+                                return `
+                                    <div class="gantt-popup">
+                                        <div class="doc-title">
+                                            <i class="bi bi-file-earmark-text me-2"></i>
+                                            ${task.name}
+                                        </div>
+                                        <div class="doc-meta">
+                                            <strong>Группа:</strong> ${task.group || 'Без группы'}
+                                        </div>
+                                        <div class="doc-meta">
+                                            <strong>Начало:</strong> ${task.start}
+                                        </div>
+                                        <div class="doc-meta">
+                                            <strong>Окончание:</strong> ${task.end}
+                                            ${isExpired ? ' <span class="badge bg-danger">ПРОСРОЧЕН</span>' : ''}
+                                            ${isExpiring && !isExpired ? ' <span class="badge bg-warning text-dark">СКОРО ИСТЕКАЕТ</span>' : ''}
+                                        </div>
+                                        <div class="doc-meta">
+                                            <strong>Прогресс:</strong> ${task.progress}%
+                                        </div>
+                                        <div class="doc-progress">
+                                            <div class="progress">
+                                                <div class="progress-bar" style="width: ${task.progress}%; background-color: ${task.color}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="doc-meta mt-2">
+                                            <span class="badge ${badge}">${status}</span>
+                                        </div>
+                                        <div class="doc-actions">
+                                            <a href="/Document/Details/${task.id}" class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="bi bi-eye"></i> Просмотреть документ
+                                            </a>
+                                        </div>
+                                    </div>
+                                `;
+                            },
+                            on_click: function(task) {
+                                // Переход на страницу документа
+                                window.location.href = '/Document/Details/' + task.id;
+                            },
+                            on_date_change: function(task, start, end) {
+                                updateDocumentDates(task.id, start, end);
+                            },
+                            on_progress_change: function(task, progress) {
+                                updateDocumentProgress(task.id, progress);
+                            }
+                        });
+
+                        document.getElementById('visible-count').textContent = enhancedTasks.length;
+                        container.classList.add(currentViewMode.toLowerCase() + '-mode');
+
+                        console.log('✅ Gantt initialized with', enhancedTasks.length, 'documents');
+
+                    } catch (e) {
+                        console.error('❌ Error initializing Gantt:', e);
+                        container.innerHTML = `
+                            <div class="alert alert-danger m-3">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Ошибка инициализации: ${e.message}
+                            </div>
+                        `;
+                    } finally {
+                        container.classList.remove('loading');
+                    }
+                }, 200);
+            }
+
+            // ========================================
+            // API ВЫЗОВЫ ДЛЯ ДОКУМЕНТОВ
+            // ========================================
+            function updateDocumentDates(documentId, start, end) {
+                fetch('/Document/UpdateDates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ 
+                        id: documentId, 
+                        startDate: start, 
+                        endDate: end 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Даты действия документа обновлены', 'success');
+                        updateStats();
+                    } else {
+                        showNotification(data.message || 'Ошибка обновления дат', 'danger');
+                    }
+                })
+                .catch(() => {
+                    showNotification('Ошибка соединения с сервером', 'danger');
                 });
+            }
+
+            function updateDocumentProgress(documentId, progress) {
+                fetch('/Document/UpdateProgress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ 
+                        id: documentId, 
+                        progress: progress 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Прогресс документа обновлен', 'success');
+                        updateStats();
+                    } else {
+                        showNotification(data.message || 'Ошибка обновления прогресса', 'danger');
+                    }
+                })
+                .catch(() => {
+                    showNotification('Ошибка соединения с сервером', 'danger');
+                });
+            }
+
+            // ========================================
+            // ОБНОВЛЕНИЕ СТАТИСТИКИ
+            // ========================================
+            function updateStats() {
+                var total = tasksData.length;
+                var completed = tasksData.filter(t => t.progress >= 100).length;
+                var active = tasksData.filter(t => t.progress > 0 && t.progress < 100).length;
+                var today = new Date().toISOString().split('T')[0];
+                var weekLater = new Date();
+                weekLater.setDate(weekLater.getDate() + 7);
+                var weekLaterStr = weekLater.toISOString().split('T')[0];
+                var expiring = tasksData.filter(t => 
+                    t.end >= today && 
+                    t.end <= weekLaterStr && 
+                    t.progress < 100
+                ).length;
+                var expired = tasksData.filter(t => t.end < today && t.progress < 100).length;
+
+                // Обновляем карточки статистики
+                var stats = document.querySelectorAll('.stat-number');
+                if (stats.length >= 5) {
+                    stats[0].textContent = total;
+                    stats[1].textContent = completed;
+                    stats[2].textContent = active;
+                    stats[3].textContent = expiring;
+                    stats[4].textContent = expired;
+                }
+            }
+
+            // ========================================
+            // ЭКСПОРТ
+            // ========================================
+            function exportGantt() {
+                var container = document.querySelector('.gantt-target');
+                if (!container) return;
+
+                showNotification('Подготовка к экспорту...', 'info');
+
+                if (typeof html2canvas === 'undefined') {
+                    showNotification('Библиотека html2canvas не загружена', 'warning');
+                    return;
+                }
+
+                html2canvas(container, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: getComputedStyle(document.body).getPropertyValue('--bs-body-bg') || '#ffffff',
+                    logging: false,
+                    allowTaint: true
+                }).then(canvas => {
+                    var link = document.createElement('a');
+                    link.download = 'gantt-documents-' + new Date().toISOString().split('T')[0] + '.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    showNotification('Экспорт успешно завершен', 'success');
+                }).catch(function(err) {
+                    console.error('Export error:', err);
+                    showNotification('Ошибка экспорта', 'danger');
+                });
+            }
+
+            // ========================================
+            // ПРОКРУТКА К СЕГОДНЯШНЕЙ ДАТЕ
+            // ========================================
+            function scrollToToday() {
+                var container = document.querySelector('.gantt-target');
+                if (!container) return;
+
+                var today = new Date();
+                var labels = container.querySelectorAll('.gantt .grid-header .gantt-row-label');
+                var targetLabel = null;
+                var minDiff = Infinity;
+
+                labels.forEach(function(el) {
+                    var text = el.textContent.trim();
+                    var dateMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
+                    if (dateMatch) {
+                        var diff = Math.abs(new Date(dateMatch[1]) - today);
+                        if (diff < minDiff) {
+                            minDiff = diff;
+                            targetLabel = el;
+                        }
+                    }
+                });
+
+                if (targetLabel) {
+                    targetLabel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetLabel.style.transition = 'background-color 0.3s';
+                    targetLabel.style.backgroundColor = 'rgba(13, 110, 253, 0.2)';
+                    setTimeout(function() {
+                        targetLabel.style.backgroundColor = '';
+                    }, 2000);
+                } else {
+                    showNotification('Сегодняшняя дата не найдена на диаграмме', 'info');
+                }
+            }
+
+            // ========================================
+            // СБРОС ФИЛЬТРОВ
+            // ========================================
+            function resetFilters() {
+                currentSearch = '';
+                currentFilter = 'all';
+                $('#gantt-search').val('');
+                $('#gantt-filter').val('all');
+                applyFilters();
+                showNotification('Фильтры сброшены', 'info');
+            }
+
+            // ========================================
+            // ПРИМЕНЕНИЕ ФИЛЬТРОВ
+            // ========================================
+            function applyFilters() {
+                initGantt(currentViewMode);
+            }
+
+            // ========================================
+            // ИНИЦИАЛИЗАЦИЯ
+            // ========================================
+            $(document).ready(function () {
+                if (typeof Gantt === 'undefined') {
+                    console.error('❌ Frappe Gantt library not loaded!');
+                    document.querySelector('.gantt-target').innerHTML = `
+                        <div class="alert alert-danger m-3">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Ошибка: библиотека Frappe Gantt не загрузилась
+                        </div>
+                    `;
+                    return;
+                }
+
+                console.log('✅ Initializing Gantt with', tasksData.length, 'documents');
+
+                initGantt('Week');
+
+                // ===== ОБРАБОТЧИКИ =====
+
+                // Масштаб
+                $('.gantt-zoom').on('click', function () {
+                    $('.gantt-zoom').removeClass('active btn-primary').addClass('btn-outline-secondary');
+                    $(this).addClass('active btn-primary').removeClass('btn-outline-secondary');
+                    initGantt($(this).data('view-mode'));
+                });
+
+                // Поиск
+                var searchTimeout;
+                $('#gantt-search').on('input', function () {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(function() {
+                        currentSearch = $('#gantt-search').val();
+                        applyFilters();
+                    }, 300);
+                });
+
+                $('#gantt-clear-search').on('click', function () {
+                    $('#gantt-search').val('');
+                    currentSearch = '';
+                    applyFilters();
+                });
+
+                // Фильтр
+                $('#gantt-filter').on('change', function () {
+                    currentFilter = $(this).val();
+                    applyFilters();
+                });
+
+                // Кнопки
+                $('#gantt-today').on('click', scrollToToday);
+                $('#gantt-reset').on('click', resetFilters);
+                $('#gantt-export').on('click', exportGantt);
+                $('#gantt-refresh').on('click', function () {
+                    applyFilters();
+                    showNotification('Диаграмма обновлена', 'success');
+                });
+
+                // Обработка resize
+                var resizeTimeout;
+                $(window).on('resize', function () {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(function() {
+                        if (ganttInstance && ganttInstance.refresh) {
+                            ganttInstance.refresh();
+                        }
+                    }, 500);
+                });
+
+                console.log('✅ All event handlers registered');
             });
-        } catch (e) {
-            console.error('Error initializing Gantt:', e);
-            $('.gantt-target').html('<div class="alert alert-danger">Ошибка инициализации: ' + e.message + '</div>');
-        }
-    });
-})();
-</script>
+
+        })();
+    </script>
+
+    <!-- html2canvas для экспорта -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 }
