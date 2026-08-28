@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CMDocumentRepository.Presentation.Controllers;
 
-[Authorize(Roles = "SuperAdmin,Admin")]
+[Authorize]
 public class UserController : Controller
 {
     private readonly IMediator _mediator;
@@ -26,6 +26,14 @@ public class UserController : Controller
 
     public async Task<IActionResult> Details(Guid id)
     {
+        // Обычные пользователи видят только свой профиль
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (currentUserId != null && !User.IsInRole("SuperAdmin") && !User.IsInRole("Admin"))
+        {
+            if (id != Guid.Parse(currentUserId))
+                return Forbid();
+        }
+
         var user = await _mediator.Send(new GetUserByIdQuery { Id = id });
         if (user == null) return NotFound();
         return View(user);

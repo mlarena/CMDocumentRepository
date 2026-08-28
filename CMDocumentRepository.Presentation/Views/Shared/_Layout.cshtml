@@ -123,7 +123,47 @@
                         <button class="btn btn-sm btn-outline-secondary me-2" onclick="toggleTheme()" title="Переключить тему">
                             <i class="bi bi-moon-stars"></i>
                         </button>
-                        <span class="small text-muted">Ctrl+S - сохранить | Ctrl+F - поиск</span>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-1"></i>
+                            @User.Identity?.Name
+                            @if (User.IsInRole("SuperAdmin"))
+                            {
+                                <span class="badge bg-danger ms-1">SuperAdmin</span>
+                            }
+                            else if (User.IsInRole("Admin"))
+                            {
+                                <span class="badge bg-warning text-dark ms-1">Admin</span>
+                            }
+                            else if (User.IsInRole("Manager"))
+                            {
+                                <span class="badge bg-info text-dark ms-1">Manager</span>
+                            }
+                            else if (User.IsInRole("Auditor"))
+                            {
+                                <span class="badge bg-secondary ms-1">Auditor</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary ms-1">User</span>
+                            }
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" asp-controller="User" asp-action="Details" asp-route-id="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value">
+                                    <i class="bi bi-person me-2"></i>Профиль
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-left me-2"></i>Выйти
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
                     </div>
                 </nav>
 
