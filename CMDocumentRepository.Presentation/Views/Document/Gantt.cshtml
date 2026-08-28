@@ -70,10 +70,30 @@ else
         }
 
         try {
+            // Функция для получения ширины колонки в зависимости от режима
+            function getColumnWidth(viewMode) {
+                switch(viewMode) {
+                    case 'Day': return 40;    // Узкие колонки для дней
+                    case 'Week': return 60;   // Средние для недель
+                    case 'Month': return 100; // Широкие для месяцев
+                    default: return 30;
+                }
+            }
+
+            // Функция для получения шага (step) в зависимости от режима
+            function getStep(viewMode) {
+                switch(viewMode) {
+                    case 'Day': return 24;    // Часы
+                    case 'Week': return 24;   // Дни
+                    case 'Month': return 7;   // Недели
+                    default: return 24;
+                }
+            }
+
             var gantt = new Gantt(".gantt-target", tasks, {
                 header_height: 50,
-                column_width: 30,
-                step: 24,
+                column_width: getColumnWidth('Week'),
+                step: getStep('Week'),
                 view_modes: ['Day', 'Week', 'Month'],
                 bar_height: 25,
                 bar_corner_radius: 3,
@@ -91,7 +111,32 @@ else
                 $('.gantt-zoom').removeClass('active btn-outline-primary').addClass('btn-outline-secondary');
                 $(this).addClass('active btn-outline-primary').removeClass('btn-outline-secondary');
                 var viewMode = $(this).data('view-mode');
+                
+                // Меняем режим просмотра
                 gantt.change_view_mode(viewMode);
+                
+                // Меняем ширину колонок (пересоздаем диаграмму)
+                var newWidth = getColumnWidth(viewMode);
+                var newStep = getStep(viewMode);
+                
+                // Пересоздаем диаграмму с новыми параметрами
+                var container = document.querySelector('.gantt-target');
+                container.innerHTML = '';
+                
+                gantt = new Gantt(".gantt-target", tasks, {
+                    header_height: 50,
+                    column_width: newWidth,
+                    step: newStep,
+                    view_modes: ['Day', 'Week', 'Month'],
+                    bar_height: 25,
+                    bar_corner_radius: 3,
+                    arrow_curve: 5,
+                    padding: 18,
+                    view_mode: viewMode,
+                    date_format: 'YYYY-MM-DD',
+                    custom_popup: false,
+                    language: 'ru'
+                });
             });
         } catch (e) {
             console.error('Error initializing Gantt:', e);
@@ -101,4 +146,3 @@ else
 })();
 </script>
 }
-
