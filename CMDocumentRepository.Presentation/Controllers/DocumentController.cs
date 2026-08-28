@@ -89,6 +89,7 @@ public class DocumentController : Controller
         var userId = GetUserId();
         bool isApprover = false;
         Guid? approvalId = null;
+        string? rejectionComment = null;
         if (userId.HasValue && document.Status == DocumentStatus.PendingApproval)
         {
             var approvals = await _mediator.Send(new GetApprovalsByDocumentQuery { DocumentId = id });
@@ -99,8 +100,16 @@ public class DocumentController : Controller
                 approvalId = pendingApproval.Id;
             }
         }
+        else if (document.Status == DocumentStatus.Rejected)
+        {
+            // Получаем причину отклонения
+            var approvals = await _mediator.Send(new GetApprovalsByDocumentQuery { DocumentId = id });
+            var rejectedApproval = approvals.FirstOrDefault(a => a.Status == ApprovalStatus.Rejected);
+            rejectionComment = rejectedApproval?.Comment;
+        }
         ViewBag.IsApprover = isApprover;
         ViewBag.ApprovalId = approvalId;
+        ViewBag.RejectionComment = rejectionComment;
 
         return View(document);
     }

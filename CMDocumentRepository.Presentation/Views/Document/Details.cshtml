@@ -120,6 +120,16 @@
                             </a>
                         </dd>
                     }
+
+                    @if (Model.Status == CMDocumentRepository.Domain.Enums.DocumentStatus.Rejected && ViewBag.RejectionComment != null)
+                    {
+                        <dt class="col-sm-3">Причина отклонения:</dt>
+                        <dd class="col-sm-9">
+                            <div class="alert alert-danger mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>@ViewBag.RejectionComment
+                            </div>
+                        </dd>
+                    }
                 </dl>
             </div>
         </div>

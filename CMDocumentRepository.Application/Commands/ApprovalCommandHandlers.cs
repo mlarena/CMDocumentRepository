@@ -159,6 +159,7 @@ public class RejectDocumentCommandHandler : IRequestHandler<RejectDocumentComman
             throw new InvalidOperationException("Документ уже обработан");
 
         approval.Status = ApprovalStatus.Rejected;
+        approval.Comment = request.Comment;
         approval.ApprovedAt = DateTime.UtcNow;
         await _approvalRepository.UpdateAsync(approval);
 
