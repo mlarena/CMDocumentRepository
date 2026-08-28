@@ -71,6 +71,13 @@
                         <label class="form-label">Комментарий к версии</label>
                         <input asp-for="ChangeComment" class="form-control" placeholder="Опишите изменения" />
                     </div>
+                    <div class="form-check">
+                        <input asp-for="IsMajorVersion" class="form-check-input" id="isMajorVersionCheck" />
+                        <label class="form-check-label" for="isMajorVersionCheck">
+                            Создать мажорную версию (1.0 → 2.0)
+                            <small class="text-muted d-block">По умолчанию создаётся минорная версия (1.0 → 1.1 → 1.2)</small>
+                        </label>
+                    </div>
                 </div>
             </div>
 

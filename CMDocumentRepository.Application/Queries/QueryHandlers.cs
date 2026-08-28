@@ -239,13 +239,19 @@ public class SearchDocumentsQueryHandler : IRequestHandler<SearchDocumentsQuery,
             request.DateFrom,
             request.DateTo);
 
+        // Загружаем всех пользователей, категории и типы одним запросом
+        var docIds = docs.Select(d => d.Id).ToList();
+        var categoryIds = docs.Select(d => d.CategoryId).Distinct().ToList();
+        var typeIds = docs.Select(d => d.DocumentTypeId).Distinct().ToList();
+        var creatorIds = docs.Select(d => d.CreatedBy).Distinct().ToList();
+
+        var categories = (await _categoryRepository.GetAllAsync()).ToDictionary(c => c.Id);
+        var types = (await _typeRepository.GetAllAsync()).ToDictionary(t => t.Id);
+        var users = (await _userRepository.GetAllAsync()).ToDictionary(u => u.Id);
+
         var result = new List<DocumentDto>();
         foreach (var doc in docs)
         {
-            var category = await _categoryRepository.GetByIdAsync(doc.CategoryId);
-            var type = await _typeRepository.GetByIdAsync(doc.DocumentTypeId);
-            var creator = await _userRepository.GetByIdAsync(doc.CreatedBy);
-
             result.Add(new DocumentDto
             {
                 Id = doc.Id,
@@ -253,19 +259,22 @@ public class SearchDocumentsQueryHandler : IRequestHandler<SearchDocumentsQuery,
                 Title = doc.Title,
                 Description = doc.Description,
                 CategoryId = doc.CategoryId,
-                CategoryName = category?.Name ?? string.Empty,
+                CategoryName = categories.TryGetValue(doc.CategoryId, out var cat) ? cat.Name : string.Empty,
                 DocumentTypeId = doc.DocumentTypeId,
-                DocumentTypeName = type?.Name ?? string.Empty,
+                DocumentTypeName = types.TryGetValue(doc.DocumentTypeId, out var typ) ? typ.Name : string.Empty,
                 Version = doc.Version,
                 Status = doc.Status,
                 CreatedBy = doc.CreatedBy,
-                CreatorName = creator != null ? $"{creator.LastName} {creator.FirstName}" : string.Empty,
+                CreatorName = users.TryGetValue(doc.CreatedBy, out var user) 
+                    ? $"{user.LastName} {user.FirstName}" 
+                    : string.Empty,
                 CreatedAt = doc.CreatedAt,
                 ValidFrom = doc.ValidFrom,
                 ValidUntil = doc.ValidUntil,
                 FilePath = doc.FilePath,
                 FileSize = doc.FileSize,
-                FileExtension = doc.FileExtension
+                FileExtension = doc.FileExtension,
+                FileName = doc.FileName
             });
         }
 
@@ -325,34 +334,43 @@ public class GetDocumentByNumberQueryHandler : IRequestHandler<GetDocumentByNumb
     }
 }
 
-public class GetDocumentVersionsQueryHandler : IRequestHandler<GetDocumentVersionsQuery, List<DocumentVersionDto>>
-{
-    private readonly IDocumentVersionRepository _versionRepository;
-    private readonly IUserRepository _userRepository;
+ public class GetDocumentVersionsQueryHandler : IRequestHandler<GetDocumentVersionsQuery, List<DocumentVersionDto>>
+ {
+     private readonly IDocumentVersionRepository _versionRepository;
+     private readonly IUserRepository _userRepository;
 
-    public GetDocumentVersionsQueryHandler(IDocumentVersionRepository versionRepository, IUserRepository userRepository)
-    {
-        _versionRepository = versionRepository;
-        _userRepository = userRepository;
-    }
+     public GetDocumentVersionsQueryHandler(IDocumentVersionRepository versionRepository, IUserRepository userRepository)
+     {
+         _versionRepository = versionRepository;
+         _userRepository = userRepository;
+     }
 
-    public async Task<List<DocumentVersionDto>> Handle(GetDocumentVersionsQuery request, CancellationToken cancellationToken)
-    {
-        var versions = await _versionRepository.GetByDocumentIdAsync(request.DocumentId);
+     public async Task<List<DocumentVersionDto>> Handle(GetDocumentVersionsQuery request, CancellationToken cancellationToken)
+     {
+         var versions = await _versionRepository.GetByDocumentIdAsync(request.DocumentId);
 
-        return versions.Select(v => new DocumentVersionDto
-        {
-            Id = v.Id,
-            DocumentId = v.DocumentId,
-            VersionNumber = v.VersionNumber,
-            FilePath = v.FilePath,
-            FileSize = v.FileSize,
-            CreatedBy = v.CreatedBy,
-            CreatedAt = v.CreatedAt,
-            ChangeComment = v.ChangeComment
-        }).ToList();
-    }
-}
+         var userIds = versions.Select(v => v.CreatedBy).Distinct().ToList();
+         var users = await _userRepository.GetAllAsync();
+         var userDict = users.ToDictionary(u => u.Id);
+
+         return versions.Select(v => new DocumentVersionDto
+         {
+             Id = v.Id,
+             DocumentId = v.DocumentId,
+             VersionNumber = v.VersionNumber,
+             IsMajorVersion = v.IsMajorVersion,
+             FileName = v.FileName,
+             FilePath = v.FilePath,
+             FileSize = v.FileSize,
+             CreatedBy = v.CreatedBy,
+             CreatedAt = v.CreatedAt,
+             ChangeComment = v.ChangeComment,
+             CreatorName = userDict.TryGetValue(v.CreatedBy, out var user)
+                 ? $"{user.LastName} {user.FirstName}"
+                 : string.Empty
+         }).ToList();
+     }
+ }
 
 public class GetMyDocumentsQueryHandler : IRequestHandler<GetMyDocumentsQuery, List<DocumentDto>>
 {

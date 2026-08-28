@@ -21,8 +21,8 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     ParentCategoryId = table.Column<Guid>(type: "uuid", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -44,8 +44,8 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     IsSystem = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -60,8 +60,8 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     Key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Value = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -82,12 +82,12 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     Role = table.Column<int>(type: "integer", maxLength: 50, nullable: false),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     IsLocked = table.Column<bool>(type: "boolean", nullable: false),
-                    LockedUntil = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    LockedUntil = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     RefreshToken = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    RefreshTokenExpiry = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    LastLoginAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    RefreshTokenExpiry = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    LastLoginAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -105,8 +105,8 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     EntityId = table.Column<Guid>(type: "uuid", nullable: true),
                     OldValues = table.Column<JsonDocument>(type: "jsonb", nullable: true),
                     NewValues = table.Column<JsonDocument>(type: "jsonb", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -134,18 +134,20 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
                     UpdatedBy = table.Column<Guid>(type: "uuid", nullable: true),
                     ApprovedBy = table.Column<Guid>(type: "uuid", nullable: true),
-                    ApprovedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    ValidFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    ValidUntil = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ApprovedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ValidFrom = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ValidUntil = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     FilePath = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     FileSize = table.Column<long>(type: "bigint", nullable: false),
                     FileExtension = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
                     MimeType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    FileName = table.Column<string>(type: "text", nullable: true),
                     IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
-                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     DeletedBy = table.Column<Guid>(type: "uuid", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Metadata = table.Column<JsonDocument>(type: "jsonb", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -181,10 +183,10 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     Status = table.Column<int>(type: "integer", maxLength: 50, nullable: false),
                     AssigneeId = table.Column<Guid>(type: "uuid", nullable: true),
                     CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    DueDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DueDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     OrderNumber = table.Column<int>(type: "integer", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -213,9 +215,9 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     Status = table.Column<int>(type: "integer", maxLength: 50, nullable: false),
                     Comment = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     OrderNumber = table.Column<int>(type: "integer", nullable: false),
-                    ApprovedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    ApprovedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -245,8 +247,8 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     CanEdit = table.Column<bool>(type: "boolean", nullable: false),
                     CanApprove = table.Column<bool>(type: "boolean", nullable: false),
                     CanDelete = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -272,12 +274,14 @@ namespace CMDocumentRepository.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     DocumentId = table.Column<Guid>(type: "uuid", nullable: false),
                     VersionNumber = table.Column<decimal>(type: "numeric(4,1)", precision: 4, scale: 1, nullable: false),
+                    IsMajorVersion = table.Column<bool>(type: "boolean", nullable: false),
+                    FileName = table.Column<string>(type: "text", nullable: false),
                     FilePath = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     FileSize = table.Column<long>(type: "bigint", nullable: false),
                     CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
                     ChangeComment = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {

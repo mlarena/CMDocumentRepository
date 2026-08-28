@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using CMDocumentRepository.Domain.Entities;
 using CMDocumentRepository.Domain.Enums;
 using CMDocumentRepository.Domain.Interfaces;
@@ -28,78 +27,33 @@ public class SearchService : ISearchService
         if (string.IsNullOrWhiteSpace(query))
             return Enumerable.Empty<Document>();
 
-        // Формируем PostgreSQL tsquery из пользовательского ввода
-        var tsQuery = BuildTsQuery(query);
+        var searchQuery = query.ToLowerInvariant();
 
-        var sql = @"
-            SELECT d.""Id"", d.""DocumentNumber"", d.""Title"", d.""Description"",
-                   d.""CategoryId"", d.""DocumentTypeId"", d.""Version"", d.""Status"",
-                   d.""CreatedBy"", d.""UpdatedBy"", d.""ApprovedBy"", d.""ApprovedAt"",
-                   d.""ValidFrom"", d.""ValidUntil"", d.""FilePath"", d.""FileSize"",
-                   d.""FileExtension"", d.""MimeType"", d.""IsDeleted"", d.""DeletedAt"",
-                   d.""DeletedBy"", d.""Metadata"", d.""CreatedAt"", d.""UpdatedAt""
-            FROM ""Documents"" d
-            WHERE d.""IsDeleted"" = false
-              AND d.""SearchVector"" @@ to_tsquery('russian', {0})";
-
-        var parameters = new List<object> { tsQuery };
-        var paramIndex = 1;
+        var docs = _context.Documents.AsNoTracking()
+            .Where(d => d.IsDeleted == false)
+            .Where(d => d.Title.ToLower().Contains(searchQuery)
+                     || d.Description.ToLower().Contains(searchQuery)
+                     || d.FileName.ToLower().Contains(searchQuery))
+            .AsQueryable();
 
         if (status.HasValue)
-        {
-            sql += $@" AND d.""Status"" = {{{paramIndex}}}";
-            parameters.Add(status.Value.ToString());
-            paramIndex++;
-        }
+            docs = docs.Where(d => d.Status == status.Value);
 
         if (categoryId.HasValue)
-        {
-            sql += $@" AND d.""CategoryId"" = {{{paramIndex}}}";
-            parameters.Add(categoryId.Value);
-            paramIndex++;
-        }
+            docs = docs.Where(d => d.CategoryId == categoryId.Value);
 
         if (documentTypeId.HasValue)
-        {
-            sql += $@" AND d.""DocumentTypeId"" = {{{paramIndex}}}";
-            parameters.Add(documentTypeId.Value);
-            paramIndex++;
-        }
+            docs = docs.Where(d => d.DocumentTypeId == documentTypeId.Value);
 
         if (dateFrom.HasValue)
-        {
-            sql += $@" AND d.""CreatedAt"" >= {{{paramIndex}}}";
-            parameters.Add(dateFrom.Value);
-            paramIndex++;
-        }
+            docs = docs.Where(d => d.CreatedAt >= dateFrom.Value);
 
         if (dateTo.HasValue)
-        {
-            sql += $@" AND d.""CreatedAt"" <= {{{paramIndex}}}";
-            parameters.Add(dateTo.Value);
-            paramIndex++;
-        }
+            docs = docs.Where(d => d.CreatedAt <= dateTo.Value);
 
-        sql += $@"
-            ORDER BY ts_rank(d.""SearchVector"", to_tsquery('russian', {0})) DESC
-            LIMIT {limit}";
-
-        return await _context.Documents
-            .FromSqlRaw(sql, parameters.ToArray())
-            .AsNoTracking()
+        return await docs
+            .OrderByDescending(d => d.Title.ToLower().IndexOf(searchQuery))
+            .Take(limit)
             .ToListAsync();
-    }
-
-    private static string BuildTsQuery(string input)
-    {
-        // Убираем спецсимволы, разбиваем на слова, соединяем через &
-        var cleaned = Regex.Replace(input, @"[^\w\s]", " ");
-        var words = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-        if (words.Length == 0)
-            return "";
-
-        // Каждое слово получает суффикс :* для prefix matching
-        return string.Join(" & ", words.Select(w => w.Trim() + ":*"));
     }
 }

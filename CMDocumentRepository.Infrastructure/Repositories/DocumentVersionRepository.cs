@@ -11,7 +11,7 @@ public class DocumentVersionRepository : Repository<DocumentVersion>, IDocumentV
 
     public async Task<IEnumerable<DocumentVersion>> GetByDocumentIdAsync(Guid documentId)
     {
-        return await _dbSet
+        return await _context.DocumentVersions
             .Where(dv => dv.DocumentId == documentId)
             .OrderByDescending(dv => dv.VersionNumber)
             .AsNoTracking()
@@ -20,15 +20,21 @@ public class DocumentVersionRepository : Repository<DocumentVersion>, IDocumentV
 
     public async Task<DocumentVersion?> GetLatestAsync(Guid documentId)
     {
-        return await _dbSet
-            .Where(dv => dv.DocumentId == documentId)
-            .OrderByDescending(dv => dv.VersionNumber)
+        return await _context.DocumentVersions
+            .Where(v => v.DocumentId == documentId)
+            .OrderByDescending(v => v.VersionNumber)
             .FirstOrDefaultAsync();
     }
 
     public async Task<DocumentVersion?> GetByVersionNumberAsync(Guid documentId, decimal versionNumber)
     {
-        return await _dbSet
-            .FirstOrDefaultAsync(dv => dv.DocumentId == documentId && dv.VersionNumber == versionNumber);
+        return await _context.DocumentVersions
+            .FirstOrDefaultAsync(v => v.DocumentId == documentId && v.VersionNumber == versionNumber);
+    }
+
+    public async Task DeleteAsync(DocumentVersion version)
+    {
+        _context.DocumentVersions.Remove(version);
+        await _context.SaveChangesAsync();
     }
 }

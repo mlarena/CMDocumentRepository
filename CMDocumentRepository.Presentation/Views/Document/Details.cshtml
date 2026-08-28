@@ -132,20 +132,37 @@
                                 <thead>
                                     <tr>
                                         <th>Версия</th>
+                                        <th>Имя файла</th>
+                                        <th>Размер</th>
                                         <th>Дата</th>
+                                        <th>Автор</th>
                                         <th>Комментарий</th>
-                                        <th>Файл</th>
+                                        <th>Действие</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var v in versions)
                                     {
                                         <tr>
-                                            <td>@v.VersionNumber.ToString("F1")</td>
+                                            <td>
+                                                <span class="badge @(v.IsMajorVersion ? "bg-primary" : "bg-secondary")">
+                                                    @v.VersionNumber.ToString("F1")
+                                                </span>
+                                                @if (v.IsMajorVersion)
+                                                {
+                                                    <small class="text-muted"> (мажорная)</small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <i class="bi bi-file-earmark"></i>
+                                                @(v.FileName ?? "—")
+                                            </td>
+                                            <td>@(v.FileSize / 1024) КБ</td>
                                             <td>@v.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>@v.CreatorName</td>
                                             <td>@(v.ChangeComment ?? "—")</td>
                                             <td>
-                                                <a asp-action="DownloadVersion" asp-route-documentId="@Model.Id" asp-route-versionNumber="@v.VersionNumber" class="btn btn-sm btn-outline-secondary">
+                                                <a asp-action="DownloadVersion" asp-route-documentId="@Model.Id" asp-route-versionNumber="@v.VersionNumber" class="btn btn-sm btn-outline-secondary" title="Скачать версию">
                                                     <i class="bi bi-download"></i>
                                                 </a>
                                             </td>

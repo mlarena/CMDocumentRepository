@@ -9,6 +9,7 @@ namespace CMDocumentRepository.Application.Commands;
 public class CreateDocumentCommandHandler : IRequestHandler<CreateDocumentCommand, DocumentDto>
 {
     private readonly IDocumentRepository _documentRepository;
+    private readonly IDocumentVersionRepository _versionRepository;
     private readonly IDocumentTypeRepository _documentTypeRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IUserRepository _userRepository;
@@ -17,6 +18,7 @@ public class CreateDocumentCommandHandler : IRequestHandler<CreateDocumentComman
 
     public CreateDocumentCommandHandler(
         IDocumentRepository documentRepository,
+        IDocumentVersionRepository versionRepository,
         IDocumentTypeRepository documentTypeRepository,
         ICategoryRepository categoryRepository,
         IUserRepository userRepository,
@@ -24,6 +26,7 @@ public class CreateDocumentCommandHandler : IRequestHandler<CreateDocumentComman
         IFileService fileService)
     {
         _documentRepository = documentRepository;
+        _versionRepository = versionRepository;
         _documentTypeRepository = documentTypeRepository;
         _categoryRepository = categoryRepository;
         _userRepository = userRepository;
@@ -77,10 +80,29 @@ public class CreateDocumentCommandHandler : IRequestHandler<CreateDocumentComman
             FileSize = fileSize,
             FileExtension = fileExtension,
             MimeType = mimeType,
+            FileName = request.FileName,
             CreatedAt = DateTime.UtcNow
         };
 
         await _documentRepository.AddAsync(document);
+
+        // Создаём первую версию (1.0) с информацией о файле
+        if (!string.IsNullOrEmpty(filePath))
+        {
+            var firstVersion = new DocumentVersion
+            {
+                Id = Guid.NewGuid(),
+                DocumentId = document.Id,
+                VersionNumber = 1.0m,
+                IsMajorVersion = false,
+                FileName = request.FileName,
+                FilePath = filePath,
+                FileSize = fileSize,
+                CreatedBy = request.CreatedBy,
+                ChangeComment = "Первоначальная версия"
+            };
+            await _versionRepository.AddAsync(firstVersion);
+        }
 
         return new DocumentDto
         {
@@ -172,32 +194,75 @@ public class UpdateDocumentCommandHandler : IRequestHandler<UpdateDocumentComman
             if (!_fileService.IsAllowedExtension(fileExtension))
                 throw new InvalidOperationException($"Формат файла {fileExtension} не поддерживается");
 
+            // --- Вычисление новой версии по SharePoint-схеме ---
+            decimal newVersionNumber;
+            bool isMajorVersion = request.IsMajorVersion;
+
             var latestVersion = await _versionRepository.GetLatestAsync(document.Id);
-            var newVersionNumber = latestVersion != null
-                ? Math.Floor(latestVersion.VersionNumber) + 0.1m
-                : 1.1m;
 
-            var versionPath = await _fileService.SaveFileVersionAsync(
-                request.File, request.FileName, document.Id, newVersionNumber);
-
-            var version = new DocumentVersion
+            if (isMajorVersion)
             {
-                Id = Guid.NewGuid(),
-                DocumentId = document.Id,
-                VersionNumber = newVersionNumber,
-                FilePath = versionPath,
-                FileSize = request.File.Length,
-                CreatedBy = request.UpdatedBy,
-                ChangeComment = request.ChangeComment,
-                CreatedAt = DateTime.UtcNow
-            };
+                // Мажорная версия: 1.0 → 2.0 → 3.0
+                newVersionNumber = latestVersion != null
+                    ? Math.Floor(latestVersion.VersionNumber) + 1.0m
+                    : 2.0m;
+            }
+            else
+            {
+                // Минорная версия: 1.0 → 1.1 → 1.2 → 2.0
+                if (latestVersion == null)
+                    newVersionNumber = 1.1m;
+                else
+                {
+                    var currentFloor = Math.Floor(latestVersion.VersionNumber);
+                    var currentMinor = latestVersion.VersionNumber - currentFloor;
+                    newVersionNumber = currentFloor + currentMinor + 0.1m;
+                }
+            }
 
-            await _versionRepository.AddAsync(version);
+            // --- Проверка существования версии (защита от дубликатов) ---
+            var existingVersion = await _versionRepository.GetByVersionNumberAsync(document.Id, newVersionNumber);
+            if (existingVersion != null)
+            {
+                // Версия уже существует — используем её, ничего не создаём
+                document.FilePath = existingVersion.FilePath;
+                document.FileSize = existingVersion.FileSize;
+                document.FileExtension = fileExtension;
+                document.Version = newVersionNumber;
+            }
+            else
+            {
+                // Версия новая — сохраняем файл и создаём запись
+                var versionPath = await _fileService.SaveFileVersionAsync(
+                    request.File, request.FileName, document.Id, newVersionNumber);
 
-            document.FilePath = await _fileService.SaveFileAsync(request.File, request.FileName, document.Id);
-            document.FileSize = request.File.Length;
-            document.FileExtension = fileExtension;
-            document.Version = newVersionNumber;
+                var version = new DocumentVersion
+                {
+                    Id = Guid.NewGuid(),
+                    DocumentId = document.Id,
+                    VersionNumber = newVersionNumber,
+                    IsMajorVersion = isMajorVersion,
+                    FileName = request.FileName,
+                    FilePath = versionPath,
+                    FileSize = request.File.Length,
+                    CreatedBy = request.UpdatedBy,
+                    ChangeComment = request.ChangeComment,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _versionRepository.AddAsync(version);
+
+                document.FilePath = await _fileService.SaveFileAsync(request.File, request.FileName, document.Id);
+                document.FileSize = request.File.Length;
+                document.FileExtension = fileExtension;
+                document.Version = newVersionNumber;
+            }
+        }
+
+        // Сохраняем имя файла
+        if (!string.IsNullOrEmpty(request.FileName))
+        {
+            document.FileName = request.FileName;
         }
 
         await _documentRepository.UpdateAsync(document);
@@ -221,7 +286,8 @@ public class UpdateDocumentCommandHandler : IRequestHandler<UpdateDocumentComman
             ValidUntil = document.ValidUntil,
             FilePath = document.FilePath,
             FileSize = document.FileSize,
-            FileExtension = document.FileExtension
+            FileExtension = document.FileExtension,
+            FileName = document.FileName
         };
     }
 }

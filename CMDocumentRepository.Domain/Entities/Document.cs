@@ -23,6 +23,7 @@ public class Document : BaseEntity
     public long FileSize { get; set; }
     public string FileExtension { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
+    public string? FileName { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }

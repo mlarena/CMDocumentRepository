@@ -11,6 +11,7 @@ namespace CMDocumentRepository.Tests.Unit;
 public class CreateDocumentCommandHandlerTests
 {
     private readonly Mock<IDocumentRepository> _documentRepositoryMock;
+    private readonly Mock<IDocumentVersionRepository> _versionRepositoryMock;
     private readonly Mock<IDocumentTypeRepository> _typeRepositoryMock;
     private readonly Mock<ICategoryRepository> _categoryRepositoryMock;
     private readonly Mock<IUserRepository> _userRepositoryMock;
@@ -21,6 +22,7 @@ public class CreateDocumentCommandHandlerTests
     public CreateDocumentCommandHandlerTests()
     {
         _documentRepositoryMock = new Mock<IDocumentRepository>();
+        _versionRepositoryMock = new Mock<IDocumentVersionRepository>();
         _typeRepositoryMock = new Mock<IDocumentTypeRepository>();
         _categoryRepositoryMock = new Mock<ICategoryRepository>();
         _userRepositoryMock = new Mock<IUserRepository>();
@@ -29,6 +31,7 @@ public class CreateDocumentCommandHandlerTests
 
         _handler = new CreateDocumentCommandHandler(
             _documentRepositoryMock.Object,
+            _versionRepositoryMock.Object,
             _typeRepositoryMock.Object,
             _categoryRepositoryMock.Object,
             _userRepositoryMock.Object,

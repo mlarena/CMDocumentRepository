@@ -29,6 +29,7 @@ public record UpdateDocumentCommand : IRequest<DocumentDto>
     public string? FileName { get; init; }
     public string? ChangeComment { get; init; }
     public Guid UpdatedBy { get; init; }
+    public bool IsMajorVersion { get; init; } = false;
 }
 
 public record DeleteDocumentCommand : IRequest<bool>

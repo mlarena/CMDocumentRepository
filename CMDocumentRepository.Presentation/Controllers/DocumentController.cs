@@ -190,7 +190,8 @@ public class DocumentController : Controller
             File = fileStream,
             FileName = fileName,
             ChangeComment = model.ChangeComment,
-            UpdatedBy = userId.Value
+            UpdatedBy = userId.Value,
+            IsMajorVersion = model.IsMajorVersion
         };
 
         var document = await _mediator.Send(command);
