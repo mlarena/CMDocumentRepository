@@ -277,17 +277,16 @@ body {
 }
 
 .gantt-bar {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 24px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    z-index: 10;
+  position: absolute;
+  height: 28px;
+  border-radius: 4px;
+  display: none;
+  cursor: pointer;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  overflow: hidden;
+  z-index: 10;
 }
 
 .gantt-bar:hover {

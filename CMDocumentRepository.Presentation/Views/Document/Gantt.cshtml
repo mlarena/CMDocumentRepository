@@ -70,9 +70,9 @@ else
                                     <span class="text-truncate">@item.Name</span>
                                 </div>
                                 <div class="gantt-row-meta">
-                                    <span class="gantt-row-priority">@priorityBadge</span>
+                                    <span class="gantt-row-priority">@Html.Raw(priorityBadge)</span>
                                     <span class="gantt-row-progress">@item.Progress%</span>
-                                    <span class="gantt-row-status">@statusBadge</span>
+                                    <span class="gantt-row-status">@Html.Raw(statusBadge)</span>
                                 </div>
                             </div>
                         }
@@ -212,6 +212,8 @@ else
 
         timeline.innerHTML = '<div class="gantt-timeline-header">' + headerHTML + '</div>';
 
+        console.log('Before renderGrid:', items.length, 'items');
+        console.log('Bars in DOM:', document.querySelectorAll('.gantt-bar').length);
         renderGrid(timelineBody, minDate, totalDays);
         positionBars(items, minDate, totalDays);
         renderArrows();
@@ -246,13 +248,21 @@ else
 
     function positionBars(items, minDate, totalDays) {
         items.forEach(function (item) {
-            var bar = document.querySelector('.gantt-bar[data-item-id="' + item.Id + '"]');
-            if (!bar) return;
+            var itemId = item.id || item.Id;
+            var bar = document.querySelector('.gantt-bar[data-item-id="' + itemId + '"]');
+            if (!bar) {
+                console.warn('Bar not found for item:', itemId, 'Available bars:', document.querySelectorAll('.gantt-bar').length);
+                return;
+            }
             var startOffset = (new Date(item.Start) - minDate) / 86400000;
             var duration = (new Date(item.End) - new Date(item.Start)) / 86400000;
             bar.style.left = (startOffset * dayWidth) + 'px';
             bar.style.width = Math.max(duration * dayWidth, 4) + 'px';
             bar.style.display = 'block';
+            bar.style.position = 'absolute';
+            bar.style.top = '50%';
+            bar.style.transform = 'translateY(-50%)';
+            console.log('Bar positioned:', itemId, 'left:', bar.style.left, 'width:', bar.style.width);
         });
     }
 
@@ -263,8 +273,8 @@ else
         var tRect = timelineBody.getBoundingClientRect();
 
         dependencies.forEach(function (dep) {
-            var fromBar = document.querySelector('.gantt-bar[data-item-id="' + dep.FromId + '"]');
-            var toBar = document.querySelector('.gantt-bar[data-item-id="' + dep.ToId + '"]');
+            var fromBar = document.querySelector('.gantt-bar[data-item-id="' + dep.fromId + '"]');
+            var toBar = document.querySelector('.gantt-bar[data-item-id="' + dep.toId + '"]');
             if (!fromBar || !toBar) return;
             var fr = fromBar.getBoundingClientRect();
             var tr = toBar.getBoundingClientRect();
@@ -291,7 +301,7 @@ else
 
     function showItemDetail(bar) {
         var id = bar.dataset.itemId;
-        var item = items.find(function (i) { return i.Id.toString() === id; });
+        var item = items.find(function (i) { return (i.id || i.Id).toString() === id; });
         if (!item) return;
 
         document.getElementById('ganttModalTitle').textContent = item.Name;
